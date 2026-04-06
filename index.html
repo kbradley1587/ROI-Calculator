@@ -87,6 +87,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <option value="phoenix">Phoenix — CO2 Laser</option>
       <option value="pixe">Pix:E — RF + Erbium Combo</option>
       <option value="bodytone">BodyTone — Muscle Stimulation</option>
+      <option value="ultralight">UltraLight — LED Therapy</option>
       <option value="custom">Custom price...</option>
     </select>
   </div>
@@ -94,8 +95,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="field">
     <div class="field-row">
       <label>Device price</label>
-      <input type="range" min="20000" max="250000" value="80000" step="5000" id="price" />
-      <span class="output" id="price-out">$80,000</span>
+      <input type="range" min="20000" max="250000" value="67000" step="1000" id="price" />
+      <span class="output" id="price-out">$67,000</span>
     </div>
   </div>
 
@@ -214,13 +215,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 <script>
 const deviceDefaults = {
-  pixel8:    { price: 80000,  txPrice: 800 },
-  picolazer: { price: 95000,  txPrice: 600 },
-  spectrum:  { price: 70000,  txPrice: 500 },
-  phoenix:   { price: 110000, txPrice: 1000 },
-  pixe:      { price: 75000,  txPrice: 700 },
-  bodytone:  { price: 60000,  txPrice: 400 },
-  custom:    { price: 80000,  txPrice: 800 }
+  pixel8:    { price: 67000,  txPrice: 800 },
+  picolazer: { price: 100000, txPrice: 600 },
+  spectrum:  { price: 80000,  txPrice: 500 },
+  phoenix:   { price: 60000,  txPrice: 1000 },
+  pixe:      { price: 80000,  txPrice: 700 },
+  bodytone:  { price: 50000,  txPrice: 400 },
+  ultralight:{ price: 20000,  txPrice: 150 },
+  custom:    { price: 67000,  txPrice: 800 }
 };
 
 const $ = id => document.getElementById(id);
