@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rohrer Aesthetics Pipeline</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 0; }
+
+.header { background: #1B3A5C; color: #fff; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+.tabs { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; position: sticky; top: 52px; z-index: 99; }
+.tab { flex: 1; padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab.active { color: #1B3A5C; border-bottom-color: #1B3A5C; }
+
+.view { display: none; padding: 16px; }
+.view.active { display: block; }
+
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.metric { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e8e8e8; }
+.metric .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.metric .value { font-size: 22px; font-weight: 600; color: #1B3A5C; margin-top: 2px; }
+.metric.big { grid-column: span 2; }
+.metric.highlight { background: #1B3A5C; }
+.metric.highlight .label { color: rgba(255,255,255,0.7); }
+.metric.highlight .value { color: #fff; }
+
+.card { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #e8e8e8; margin-bottom: 14px; }
+.card-title { font-size: 15px; font-weight: 600; color: #1B3A5C; margin-bottom: 12px; }
+
+.funnel-bar { display: flex; align-items: center; margin-bottom: 8px; }
+.funnel-label { font-size: 12px; min-width: 110px; color: #666; }
+.funnel-track { flex: 1; height: 28px; background: #f0f0f0; border-radius: 6px; overflow: hidden; position: relative; }
+.funnel-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; font-weight: 600; color: #fff; min-width: 40px; transition: width 0.5s; }
+.funnel-count { font-size: 12px; font-weight: 600; min-width: 30px; text-align: right; margin-left: 8px; color: #333; }
+
+.opp-card { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e8e8e8; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; }
+.opp-card:hover { border-color: #1B3A5C; }
+.opp-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.opp-name { font-size: 14px; font-weight: 600; color: #1B3A5C; }
+.opp-value { font-size: 14px; font-weight: 600; color: #333; }
+.opp-detail { font-size: 12px; color: #888; margin-bottom: 4px; }
+.opp-stage-badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+.stage-1 { background: #E6F1FB; color: #185FA5; }
+.stage-2 { background: #FAEEDA; color: #854F0B; }
+.stage-3 { background: #EAF3DE; color: #3B6D11; }
+.stage-4 { background: #EEEDFE; color: #534AB7; }
+.stage-5 { background: #E1F5EE; color: #0F6E56; }
+.stage-0 { background: #FCEBEB; color: #A32D2D; }
+
+.detail-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f8f9fa; z-index: 200; overflow-y: auto; }
+.detail-overlay.active { display: block; }
+.detail-header { background: #1B3A5C; color: #fff; padding: 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; }
+.detail-back { font-size: 24px; cursor: pointer; padding: 0 8px; }
+.detail-title { font-size: 16px; font-weight: 600; }
+.detail-body { padding: 16px; }
+
+.field-group { margin-bottom: 16px; }
+.field-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.field-value { font-size: 14px; color: #333; font-weight: 500; }
+
+.stage-selector { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.stage-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.stage-btn:hover { border-color: #1B3A5C; }
+.stage-btn.active { background: #1B3A5C; color: #fff; border-color: #1B3A5C; }
+.stage-btn.lost { border-color: #A32D2D; }
+.stage-btn.lost.active { background: #A32D2D; }
+
+.note-entry { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.note-date { font-size: 11px; color: #888; font-weight: 600; }
+.note-text { font-size: 13px; color: #333; margin-top: 2px; line-height: 1.5; }
+
+.btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; margin-bottom: 8px; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #1B3A5C; color: #fff; }
+.btn-secondary { background: #fff; color: #1B3A5C; border: 1px solid #1B3A5C; }
+.btn-danger { background: #A32D2D; color: #fff; }
+
+input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="tel"], textarea, select {
+  width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+  font-family: inherit; background: #fff; color: #333; margin-top: 4px; }
+textarea { min-height: 80px; resize: vertical; }
+
+.form-row { margin-bottom: 14px; }
+.form-label { font-size: 12px; color: #666; font-weight: 600; }
+
+.loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+
+.chart-container { position: relative; height: 200px; margin-top: 10px; }
+
+.filter-bar { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+.filter-chip { padding: 6px 12px; border-radius: 16px; border: 1px solid #ddd; background: #fff; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.filter-chip.active { background: #1B3A5C; color: #fff; border-color: #1B3A5C; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: #888; }
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ====== CHANGE THIS URL TO YOUR DEPLOYED GOOGLE APPS SCRIPT URL ====== -->
+<script>
+// PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+const API_URL = "https://script.google.com/macros/s/AKfycbwIhfeyIdg-CkkD32FKamf_jENMZWkgUAoZYCLJO539eNSTieQEL0OI1Jdj9af4md8/exec";
+</script>
+
+<div class="header">
+  <h1>Sales Pipeline</h1>
+  <p>Rohrer Aesthetics</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+  <div class="tab" onclick="switchTab('pipeline')">Pipeline</div>
+  <div class="tab" onclick="switchTab('add')">+ New</div>
+</div>
+
+<!-- ============ DASHBOARD VIEW ============ -->
+<div id="view-dashboard" class="view active">
+  <div id="dashboard-content">
+    <div class="loading">Loading pipeline data...</div>
+  </div>
+</div>
+
+<!-- ============ PIPELINE VIEW ============ -->
+<div id="view-pipeline" class="view">
+  <div id="filter-bar" class="filter-bar">
+    <div class="filter-chip active" onclick="filterPipeline('all')">All</div>
+    <div class="filter-chip" onclick="filterPipeline('1')">Prospecting</div>
+    <div class="filter-chip" onclick="filterPipeline('2')">Discovery</div>
+    <div class="filter-chip" onclick="filterPipeline('3')">Demo</div>
+    <div class="filter-chip" onclick="filterPipeline('4')">Proposal</div>
+    <div class="filter-chip" onclick="filterPipeline('5')">Won</div>
+    <div class="filter-chip" onclick="filterPipeline('0')">Lost</div>
+  </div>
+  <div id="pipeline-list"></div>
+</div>
+
+<!-- ============ ADD NEW VIEW ============ -->
+<div id="view-add" class="view">
+  <div class="card">
+    <div class="card-title">New opportunity</div>
+    <div class="form-row">
+      <div class="form-label">Practice name</div>
+      <input type="text" id="new-practice-name" placeholder="e.g. Nashville Skin Company" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Practice ID (from intel app)</div>
+      <input type="text" id="new-practice-id" placeholder="e.g. NSH-001" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Market</div>
+      <input type="text" id="new-market" placeholder="e.g. Nashville, TN" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Rep name</div>
+      <input type="text" id="new-rep" placeholder="Your name" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Contact name</div>
+      <input type="text" id="new-contact-name" placeholder="Decision maker" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Contact role</div>
+      <input type="text" id="new-contact-role" placeholder="e.g. Owner, Medical Director" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Contact email</div>
+      <input type="email" id="new-contact-email" placeholder="email@practice.com" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Contact phone</div>
+      <input type="tel" id="new-contact-phone" placeholder="555-555-5555" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Rohrer device</div>
+      <select id="new-device">
+        <option value="PiXel8-RF">PiXel8-RF — RF Microneedling</option>
+        <option value="PicoLazer">PicoLazer — Picosecond Laser</option>
+        <option value="Spectrum">Spectrum — 5-in-1 Platform</option>
+        <option value="Phoenix">Phoenix — CO2 Laser</option>
+        <option value="Pix:E">Pix:E — RF + Erbium Combo</option>
+        <option value="BodyTone">BodyTone — Muscle Stimulation</option>
+        <option value="UltraLight">UltraLight — LED Therapy</option>
+        <option value="Multiple">Multiple devices</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-label">Estimated deal value ($)</div>
+      <input type="number" id="new-deal-value" placeholder="80000" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Expected close date</div>
+      <input type="date" id="new-close-date" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Next action</div>
+      <input type="text" id="new-next-action" placeholder="e.g. Schedule intro call" />
+    </div>
+    <div class="form-row">
+      <div class="form-label">Initial notes</div>
+      <textarea id="new-notes" placeholder="Context from intel report, first impressions, etc."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="createOpportunity()">Create opportunity</button>
+  </div>
+</div>
+
+<!-- ============ DETAIL OVERLAY ============ -->
+<div id="detail-overlay" class="detail-overlay">
+  <div class="detail-header">
+    <div class="detail-back" onclick="closeDetail()">&larr;</div>
+    <div class="detail-title" id="detail-title">Opportunity</div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<script>
+let allOpportunities = [];
+let currentFilter = 'all';
+let currentOpp = null;
+let funnelChart = null;
+let deviceChart = null;
+
+const stageMap = {
+  1: { name: "Prospecting", prob: 0.10, color: "#85B7EB" },
+  2: { name: "Discovery", prob: 0.25, color: "#FAC775" },
+  3: { name: "Demo/Evaluation", prob: 0.50, color: "#97C459" },
+  4: { name: "Proposal", prob: 0.75, color: "#AFA9EC" },
+  5: { name: "Closed Won", prob: 1.00, color: "#5DCAA5" },
+  0: { name: "Closed Lost", prob: 0.00, color: "#F09595" }
+};
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+
+// ============ API CALLS ============
+async function apiCall(params) {
+  const url = new URL(API_URL);
+  Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+  try {
+    const resp = await fetch(url.toString());
+    return await resp.json();
+  } catch(e) {
+    console.error('API Error:', e);
+    return { error: e.toString() };
+  }
+}
+
+async function loadData() {
+  const result = await apiCall({ action: 'getAll' });
+  if (result.success) {
+    allOpportunities = result.data;
+    renderDashboard();
+    renderPipeline();
+  } else {
+    document.getElementById('dashboard-content').innerHTML = 
+      '<div class="empty-state"><div class="icon">!</div><p>Could not load data. Check your Apps Script URL.</p></div>';
+  }
+}
+
+// ============ TABS ============
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('view-' + tab).classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'pipeline') renderPipeline();
+}
+
+// ============ DASHBOARD ============
+function renderDashboard() {
+  const active = allOpportunities.filter(o => parseInt(o.Stage) > 0 && parseInt(o.Stage) < 5);
+  const won = allOpportunities.filter(o => parseInt(o.Stage) === 5);
+  const lost = allOpportunities.filter(o => parseInt(o.Stage) === 0);
+  
+  const totalPipeline = active.reduce((sum, o) => sum + (parseFloat(o.Deal_Value) || 0), 0);
+  const weightedPipeline = active.reduce((sum, o) => sum + (parseFloat(o.Weighted_Value) || 0), 0);
+  const wonValue = won.reduce((sum, o) => sum + (parseFloat(o.Deal_Value) || 0), 0);
+  
+  const stageCounts = {};
+  const stageValues = {};
+  [1,2,3,4,5,0].forEach(s => { stageCounts[s] = 0; stageValues[s] = 0; });
+  allOpportunities.forEach(o => {
+    const s = parseInt(o.Stage) || 0;
+    stageCounts[s] = (stageCounts[s] || 0) + 1;
+    stageValues[s] = (stageValues[s] || 0) + (parseFloat(o.Deal_Value) || 0);
+  });
+  
+  const maxStageValue = Math.max(...Object.values(stageValues), 1);
+  
+  let html = '';
+  
+  html += '<div class="metrics">';
+  html += `<div class="metric highlight"><div class="label">Total pipeline</div><div class="value">${fmt(totalPipeline)}</div></div>`;
+  html += `<div class="metric highlight"><div class="label">Weighted pipeline</div><div class="value">${fmt(weightedPipeline)}</div></div>`;
+  html += `<div class="metric"><div class="label">Active deals</div><div class="value">${active.length}</div></div>`;
+  html += `<div class="metric"><div class="label">Closed won</div><div class="value">${fmt(wonValue)} (${won.length})</div></div>`;
+  html += '</div>';
+  
+  html += '<div class="card"><div class="card-title">Pipeline funnel</div>';
+  [1,2,3,4,5].forEach(s => {
+    const pct = maxStageValue > 0 ? Math.max((stageValues[s] / maxStageValue) * 100, 8) : 8;
+    html += `<div class="funnel-bar">
+      <div class="funnel-label">${stageMap[s].name}</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:${pct}%; background:${stageMap[s].color};">${fmt(stageValues[s])}</div>
+      </div>
+      <div class="funnel-count">${stageCounts[s]}</div>
+    </div>`;
+  });
+  if (stageCounts[0] > 0) {
+    html += `<div class="funnel-bar">
+      <div class="funnel-label">Closed Lost</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:30%; background:${stageMap[0].color};">-</div>
+      </div>
+      <div class="funnel-count">${stageCounts[0]}</div>
+    </div>`;
+  }
+  html += '</div>';
+  
+  // Device breakdown
+  const byDevice = {};
+  active.forEach(o => {
+    const d = o.Rohrer_Device || 'Unknown';
+    if (!byDevice[d]) byDevice[d] = { count: 0, value: 0 };
+    byDevice[d].count++;
+    byDevice[d].value += parseFloat(o.Deal_Value) || 0;
+  });
+  
+  html += '<div class="card"><div class="card-title">Pipeline by device</div>';
+  Object.keys(byDevice).sort((a,b) => byDevice[b].value - byDevice[a].value).forEach(d => {
+    html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+      <div><span style="font-size:13px; font-weight:600;">${d}</span> <span style="font-size:12px; color:#888;">(${byDevice[d].count} deals)</span></div>
+      <div style="font-size:13px; font-weight:600;">${fmt(byDevice[d].value)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  
+  // Market breakdown
+  const byMarket = {};
+  active.forEach(o => {
+    const m = o.Market_MSA || 'Unknown';
+    if (!byMarket[m]) byMarket[m] = { count: 0, value: 0 };
+    byMarket[m].count++;
+    byMarket[m].value += parseFloat(o.Deal_Value) || 0;
+  });
+  
+  html += '<div class="card"><div class="card-title">Pipeline by market</div>';
+  Object.keys(byMarket).sort((a,b) => byMarket[b].value - byMarket[a].value).forEach(m => {
+    html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+      <div><span style="font-size:13px; font-weight:600;">${m}</span> <span style="font-size:12px; color:#888;">(${byMarket[m].count})</span></div>
+      <div style="font-size:13px; font-weight:600;">${fmt(byMarket[m].value)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  
+  // Upcoming actions
+  const withActions = active.filter(o => o.Next_Action).sort((a,b) => {
+    return (a.Next_Action_Date || '9999') < (b.Next_Action_Date || '9999') ? -1 : 1;
+  }).slice(0, 5);
+  
+  if (withActions.length > 0) {
+    html += '<div class="card"><div class="card-title">Upcoming actions</div>';
+    withActions.forEach(o => {
+      html += `<div style="padding:8px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;" onclick="openDetail('${o.Opportunity_ID}')">
+        <div style="font-size:13px; font-weight:600; color:#1B3A5C;">${o.Practice_Name}</div>
+        <div style="font-size:12px; color:#666;">${o.Next_Action}</div>
+        <div style="font-size:11px; color:#888;">${o.Next_Action_Date || 'No date set'}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  
+  document.getElementById('dashboard-content').innerHTML = html;
+}
+
+// ============ PIPELINE LIST ============
+function renderPipeline() {
+  let filtered = allOpportunities;
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(o => String(o.Stage) === currentFilter);
+  }
+  
+  filtered.sort((a,b) => {
+    const sa = parseInt(a.Stage) || 0;
+    const sb = parseInt(b.Stage) || 0;
+    if (sa !== sb) return sb - sa;
+    return (parseFloat(b.Deal_Value) || 0) - (parseFloat(a.Deal_Value) || 0);
+  });
+  
+  let html = '';
+  
+  if (filtered.length === 0) {
+    html = '<div class="empty-state"><div class="icon">&#128269;</div><p>No opportunities in this stage</p></div>';
+  }
+  
+  filtered.forEach(o => {
+    const stage = parseInt(o.Stage) || 0;
+    const info = stageMap[stage] || stageMap[1];
+    html += `<div class="opp-card" onclick="openDetail('${o.Opportunity_ID}')">
+      <div class="opp-top">
+        <div class="opp-name">${o.Practice_Name || 'Unknown'}</div>
+        <div class="opp-value">${fmt(parseFloat(o.Deal_Value) || 0)}</div>
+      </div>
+      <div class="opp-detail">${o.Rohrer_Device || ''} &middot; ${o.Market_MSA || ''}</div>
+      <div class="opp-detail">${o.Rep_Name ? 'Rep: ' + o.Rep_Name : ''}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <span class="opp-stage-badge stage-${stage}">${info.name} (${Math.round(info.prob * 100)}%)</span>
+        <span style="font-size:12px; color:#888;">Wtd: ${fmt((parseFloat(o.Deal_Value) || 0) * info.prob)}</span>
+      </div>
+    </div>`;
+  });
+  
+  document.getElementById('pipeline-list').innerHTML = html;
+}
+
+function filterPipeline(stage) {
+  currentFilter = stage;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  renderPipeline();
+}
+
+// ============ DETAIL VIEW ============
+function openDetail(oppId) {
+  currentOpp = allOpportunities.find(o => o.Opportunity_ID === oppId);
+  if (!currentOpp) return;
+  
+  const stage = parseInt(currentOpp.Stage) || 0;
+  const info = stageMap[stage] || stageMap[1];
+  
+  document.getElementById('detail-title').textContent = currentOpp.Practice_Name;
+  
+  let html = '';
+  
+  // Stage and value header
+  html += '<div class="metrics">';
+  html += `<div class="metric highlight"><div class="label">Deal value</div><div class="value">${fmt(parseFloat(currentOpp.Deal_Value) || 0)}</div></div>`;
+  html += `<div class="metric highlight"><div class="label">Weighted value</div><div class="value">${fmt((parseFloat(currentOpp.Deal_Value) || 0) * info.prob)}</div></div>`;
+  html += '</div>';
+  
+  // Current stage
+  html += `<div class="card">
+    <div class="card-title">Current stage</div>
+    <div style="text-align:center; margin-bottom:12px;">
+      <span class="opp-stage-badge stage-${stage}" style="font-size:14px; padding:6px 16px;">${info.name} — ${Math.round(info.prob * 100)}%</span>
+    </div>
+    <div class="stage-selector">`;
+  [1,2,3,4,5].forEach(s => {
+    html += `<div class="stage-btn ${s === stage ? 'active' : ''}" onclick="changeStage('${currentOpp.Opportunity_ID}', ${s})">${s}. ${stageMap[s].name.split('/')[0]}</div>`;
+  });
+  html += `<div class="stage-btn lost ${stage === 0 ? 'active' : ''}" onclick="changeStage('${currentOpp.Opportunity_ID}', 0)">Lost</div>`;
+  html += '</div></div>';
+  
+  // Contact info
+  html += `<div class="card">
+    <div class="card-title">Contact</div>
+    <div class="field-group"><div class="field-label">Name</div><div class="field-value">${currentOpp.Contact_Name || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Role</div><div class="field-value">${currentOpp.Contact_Role || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Email</div><div class="field-value">${currentOpp.Contact_Email || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Phone</div><div class="field-value">${currentOpp.Contact_Phone ? '<a href="tel:' + currentOpp.Contact_Phone + '">' + currentOpp.Contact_Phone + '</a>' : '-'}</div></div>
+  </div>`;
+  
+  // Deal info
+  html += `<div class="card">
+    <div class="card-title">Deal details</div>
+    <div class="field-group"><div class="field-label">Opportunity ID</div><div class="field-value">${currentOpp.Opportunity_ID}</div></div>
+    <div class="field-group"><div class="field-label">Practice ID</div><div class="field-value">${currentOpp.Practice_ID || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Market</div><div class="field-value">${currentOpp.Market_MSA || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Device</div><div class="field-value">${currentOpp.Rohrer_Device || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Rep</div><div class="field-value">${currentOpp.Rep_Name || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Created</div><div class="field-value">${currentOpp.Date_Created || '-'}</div></div>
+    <div class="field-group"><div class="field-label">Expected close</div><div class="field-value">${currentOpp.Expected_Close_Date || '-'}</div></div>
+  </div>`;
+  
+  // Next action
+  html += `<div class="card">
+    <div class="card-title">Next action</div>
+    <div style="font-size:14px; font-weight:500; color:#1B3A5C; margin-bottom:4px;">${currentOpp.Next_Action || 'No action set'}</div>
+    <div style="font-size:12px; color:#888;">${currentOpp.Next_Action_Date || ''}</div>
+    <div style="margin-top:12px;">
+      <input type="text" id="update-next-action" placeholder="Update next action..." />
+      <input type="date" id="update-next-date" style="margin-top:6px;" />
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="updateNextAction()">Update action</button>
+    </div>
+  </div>`;
+  
+  // Notes
+  html += `<div class="card">
+    <div class="card-title">Notes</div>
+    <div style="margin-bottom:12px;">
+      <textarea id="new-note-text" placeholder="Add a note..."></textarea>
+      <button class="btn btn-secondary" style="margin-top:6px;" onclick="addNoteToOpp()">Add note</button>
+    </div>`;
+  
+  const notes = (currentOpp.Notes || '').split('\n').filter(n => n.trim());
+  notes.forEach(n => {
+    const parts = n.split(': ');
+    const date = parts[0] || '';
+    const text = parts.slice(1).join(': ') || n;
+    html += `<div class="note-entry"><div class="note-date">${date}</div><div class="note-text">${text}</div></div>`;
+  });
+  html += '</div>';
+  
+  document.getElementById('detail-body').innerHTML = html;
+  document.getElementById('detail-overlay').classList.add('active');
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('active');
+  currentOpp = null;
+  renderPipeline();
+  renderDashboard();
+}
+
+// ============ ACTIONS ============
+async function createOpportunity() {
+  const params = {
+    action: 'add',
+    Practice_Name: document.getElementById('new-practice-name').value,
+    Practice_ID: document.getElementById('new-practice-id').value,
+    Market_MSA: document.getElementById('new-market').value,
+    Rep_Name: document.getElementById('new-rep').value,
+    Contact_Name: document.getElementById('new-contact-name').value,
+    Contact_Role: document.getElementById('new-contact-role').value,
+    Contact_Email: document.getElementById('new-contact-email').value,
+    Contact_Phone: document.getElementById('new-contact-phone').value,
+    Rohrer_Device: document.getElementById('new-device').value,
+    Deal_Value: document.getElementById('new-deal-value').value,
+    Expected_Close_Date: document.getElementById('new-close-date').value,
+    Next_Action: document.getElementById('new-next-action').value,
+    Initial_Note: document.getElementById('new-notes').value,
+    Stage: '1',
+    Stage_Name: 'Prospecting',
+    Win_Probability: '0.10'
+  };
+  
+  if (!params.Practice_Name) { alert('Please enter a practice name'); return; }
+  if (!params.Deal_Value) { alert('Please enter a deal value'); return; }
+  
+  const btn = event.target;
+  btn.textContent = 'Creating...';
+  btn.disabled = true;
+  
+  const result = await apiCall(params);
+  
+  if (result.success) {
+    // Clear form
+    ['new-practice-name','new-practice-id','new-market','new-rep','new-contact-name',
+     'new-contact-role','new-contact-email','new-contact-phone','new-deal-value',
+     'new-next-action','new-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('new-close-date').value = '';
+    
+    alert('Opportunity ' + result.id + ' created!');
+    await loadData();
+    switchTabDirect('pipeline');
+  } else {
+    alert('Error: ' + (result.error || 'Unknown error'));
+  }
+  
+  btn.textContent = 'Create opportunity';
+  btn.disabled = false;
+}
+
+async function changeStage(oppId, newStage) {
+  let note = '';
+  let lostReason = '';
+  
+  if (newStage === 0) {
+    lostReason = prompt('Why was this opportunity lost?');
+    if (lostReason === null) return;
+    note = 'Lost reason: ' + lostReason;
+  } else if (newStage === 5) {
+    if (!confirm('Mark this deal as Closed Won?')) return;
+    note = 'Deal closed!';
+  } else {
+    note = prompt('Add a note about this stage change (optional):') || '';
+  }
+  
+  const result = await apiCall({
+    action: 'updateStage',
+    Opportunity_ID: oppId,
+    Stage: String(newStage),
+    Stage_Note: note,
+    Lost_Reason: lostReason
+  });
+  
+  if (result.success) {
+    await loadData();
+    openDetail(oppId);
+  } else {
+    alert('Error: ' + (result.error || 'Unknown error'));
+  }
+}
+
+async function addNoteToOpp() {
+  const noteText = document.getElementById('new-note-text').value;
+  if (!noteText) return;
+  
+  const result = await apiCall({
+    action: 'addNote',
+    Opportunity_ID: currentOpp.Opportunity_ID,
+    Note: noteText
+  });
+  
+  if (result.success) {
+    document.getElementById('new-note-text').value = '';
+    await loadData();
+    openDetail(currentOpp.Opportunity_ID);
+  }
+}
+
+async function updateNextAction() {
+  const action = document.getElementById('update-next-action').value;
+  const date = document.getElementById('update-next-date').value;
+  if (!action) return;
+  
+  const result = await apiCall({
+    action: 'update',
+    Opportunity_ID: currentOpp.Opportunity_ID,
+    Next_Action: action,
+    Next_Action_Date: date
+  });
+  
+  if (result.success) {
+    await loadData();
+    openDetail(currentOpp.Opportunity_ID);
+  }
+}
+
+function switchTabDirect(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab')[tab === 'dashboard' ? 0 : tab === 'pipeline' ? 1 : 2].classList.add('active');
+  document.getElementById('view-' + tab).classList.add('active');
+}
+
+// ============ INIT ============
+// Check if API URL is configured
+if (API_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+  document.getElementById('dashboard-content').innerHTML = `
+    <div class="empty-state">
+      <div class="icon">&#9881;</div>
+      <p><strong>Setup required</strong></p>
+      <p style="font-size:13px; text-align:left; max-width:300px; margin:0 auto;">
+        1. Add the Pipeline sheet to your Google Sheet<br><br>
+        2. Deploy the Google Apps Script<br><br>
+        3. Copy the Web App URL<br><br>
+        4. Edit this file and replace YOUR_GOOGLE_APPS_SCRIPT_URL_HERE with your URL<br><br>
+        5. Commit and push to GitHub
+      </p>
+    </div>`;
+} else {
+  loadData();
+}
+</script>
+</body>
+</html>
