@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rohrer Aesthetics Battle Cards</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 16px; }
+
+.header { text-align: center; margin-bottom: 20px; }
+.header h1 { font-size: 20px; font-weight: 600; color: #1B3A5C; }
+.header p { font-size: 13px; color: #888; margin-top: 4px; }
+
+.selector { margin-bottom: 16px; }
+.selector label { font-size: 12px; color: #666; display: block; margin-bottom: 6px; }
+.selector select { font-size: 14px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; width: 100%; }
+
+.matchup-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; padding: 16px; background: #1B3A5C; border-radius: 12px; }
+.matchup-device { text-align: center; }
+.matchup-device .name { font-size: 15px; font-weight: 600; color: #fff; }
+.matchup-device .brand { font-size: 11px; color: rgba(255,255,255,0.6); }
+.matchup-vs { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 8px; }
+
+.card { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #e8e8e8; margin-bottom: 14px; }
+.card-title { font-size: 14px; font-weight: 600; color: #1B3A5C; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.card-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; flex-shrink: 0; }
+
+.win-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+.win-icon { width: 22px; height: 22px; border-radius: 50%; background: #0F6E56; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; flex-shrink: 0; margin-top: 1px; }
+.lose-icon { width: 22px; height: 22px; border-radius: 50%; background: #993C1D; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; flex-shrink: 0; margin-top: 1px; }
+.neutral-icon { width: 22px; height: 22px; border-radius: 50%; background: #888; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; flex-shrink: 0; margin-top: 1px; }
+.win-text { font-size: 13px; line-height: 1.5; }
+.win-label { font-weight: 600; color: #0F6E56; }
+.lose-label { font-weight: 600; color: #993C1D; }
+.neutral-label { font-weight: 600; color: #888; }
+
+.objection { background: #f8f4ee; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.objection-q { font-size: 13px; font-weight: 600; color: #854F0B; margin-bottom: 6px; }
+.objection-a { font-size: 13px; color: #333; line-height: 1.5; }
+
+.opener { background: #E6F1FB; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+.opener-label { font-size: 12px; font-weight: 600; color: #185FA5; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.opener-text { font-size: 13px; color: #185FA5; line-height: 1.6; font-style: italic; }
+
+.spec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.spec-table th { text-align: left; padding: 8px 6px; border-bottom: 2px solid #1B3A5C; color: #1B3A5C; font-weight: 600; }
+.spec-table td { padding: 7px 6px; border-bottom: 1px solid #eee; }
+.spec-table .rohrer { font-weight: 600; color: #0F6E56; }
+.spec-table .competitor { color: #666; }
+.spec-table tr:last-child td { border-bottom: none; }
+
+.tag { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; margin-right: 4px; margin-bottom: 4px; }
+.tag-win { background: #EAF3DE; color: #3B6D11; }
+.tag-caution { background: #FAEEDA; color: #854F0B; }
+.tag-block { background: #FCEBEB; color: #A32D2D; }
+
+.footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; }
+
+.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Competitive Battle Cards</h1>
+  <p>Know your advantage before every call</p>
+</div>
+
+<div class="selector">
+  <label>Select matchup</label>
+  <select id="matchup" onchange="showCard()">
+    <optgroup label="PiXel8-RF — RF Microneedling">
+      <option value="pixel8-morpheus8" selected>PiXel8 vs InMode Morpheus8</option>
+      <option value="pixel8-profound">PiXel8 vs Candela Profound RF</option>
+      <option value="pixel8-genius">PiXel8 vs Lutronic Genius RF</option>
+      <option value="pixel8-scarlet">PiXel8 vs Viol Scarlet SRF</option>
+      <option value="pixel8-vivace">PiXel8 vs Aesthetics Biomedical Vivace</option>
+    </optgroup>
+    <optgroup label="PicoLazer — Picosecond Laser">
+      <option value="pico-picosure">PicoLazer vs Cynosure PicoSure</option>
+      <option value="pico-picoway">PicoLazer vs Candela PicoWay</option>
+      <option value="pico-enlighten">PicoLazer vs Cutera Enlighten</option>
+      <option value="pico-qswitch">PicoLazer vs Q-Switched Nd:YAG (any)</option>
+    </optgroup>
+    <optgroup label="Spectrum — 5-in-1 Platform">
+      <option value="spectrum-m22">Spectrum vs Lumenis M22</option>
+      <option value="spectrum-xeo">Spectrum vs Cutera Xeo</option>
+      <option value="spectrum-multi">Spectrum vs Multiple Single-Purpose Devices</option>
+    </optgroup>
+    <optgroup label="BodyTone — Muscle Stimulation">
+      <option value="bodytone-emsculpt">BodyTone vs BTL Emsculpt NEO</option>
+      <option value="bodytone-cooltone">BodyTone vs Allergan CoolTone</option>
+    </optgroup>
+    <optgroup label="Phoenix — CO2 Laser">
+      <option value="phoenix-co2re">Phoenix vs Candela CO2RE</option>
+      <option value="phoenix-acupulse">Phoenix vs Lumenis AcuPulse</option>
+    </optgroup>
+  </select>
+</div>
+
+<div id="cards-container"></div>
+
+<div class="footer">
+  Rohrer Aesthetics Battle Cards — Powered by 3AM Solutions<br>
+  For internal sales use only. Not for distribution.
+</div>
+
+<script>
+const battleCards = {
+
+"pixel8-morpheus8": {
+  rohrer: { name: "PiXel8-RF", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Morpheus8", brand: "InMode" },
+  advantages: [
+    { type: "win", label: "4 MHz frequency", text: "PiXel8 operates at 4 MHz — the highest on the market. Morpheus8 uses a lower 1 MHz bipolar RF. Higher frequency delivers more precise energy to the target tissue with less thermal spread to surrounding areas." },
+    { type: "win", label: "FDA-cleared device", text: "PiXel8 is FDA-cleared specifically as an RF microneedling device. Proven safety and efficacy profile." },
+    { type: "win", label: "No consumables", text: "PiXel8 has zero per-treatment consumable costs. Morpheus8 requires disposable tips that cost $25-50+ per treatment, cutting into margins on every procedure." },
+    { type: "win", label: "Standalone value", text: "PiXel8 is purchased as a standalone device. Morpheus8 is often bundled with the InMode Optimas platform, requiring a larger overall investment to access." },
+    { type: "caution", label: "Brand awareness", text: "Morpheus8 has significant consumer brand recognition driven by celebrity endorsements (Kardashians). Practices may perceive patient demand specifically for Morpheus8 by name." },
+    { type: "caution", label: "Installed base", text: "InMode has a large installed base. Some practices may have multi-device InMode contracts that make switching more complex." }
+  ],
+  specs: [
+    ["RF Frequency", "4 MHz", "1 MHz bipolar"],
+    ["Needle Depth", "Up to 4mm (face)", "Up to 4mm (face) / 7mm (body)"],
+    ["Consumable Cost", "$0 per treatment", "$25-50+ per tip"],
+    ["Treatment Time", "15-30 min", "15-60 min"],
+    ["Platform Required", "Standalone", "Optimas platform"],
+    ["FDA Cleared", "Yes", "Yes"]
+  ],
+  objections: [
+    { q: "My patients ask for Morpheus8 by name.", a: "That's great — it means your patients already want RF microneedling. The clinical outcome is what they're really after: tighter skin, reduced wrinkles, collagen remodeling. PiXel8 delivers superior results with 4 MHz precision. Once patients see their results, the device name doesn't matter. And you keep $25-50 more per treatment without the consumable cost." },
+    { q: "We already have Morpheus8 and it works fine.", a: "I'm not here to replace something that's working. But when your Morpheus8 lease comes up for renewal, let's compare the numbers side by side. The consumable savings alone over a 5-year term are significant. Can I ask when your current agreement ends?" },
+    { q: "InMode is a bigger company with more support.", a: "InMode is a great company. Rohrer has 5,000+ devices in the field and a dedicated clinical support team. We're focused specifically on aesthetic devices — it's all we do. That focus means faster response times and clinical training resources built around your specific device." }
+  ],
+  opener: "I see you're offering Morpheus8 for RF microneedling. Your patients clearly love the treatment category. I'd love to show you how PiXel8's 4 MHz technology is advancing what's possible with RF microneedling — and how the zero-consumable model could add $15,000+ per year to your bottom line on the same treatment volume."
+},
+
+"pixel8-profound": {
+  rohrer: { name: "PiXel8-RF", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Profound RF", brand: "Candela / Syneron-Candela" },
+  advantages: [
+    { type: "win", label: "Treatment comfort", text: "PiXel8 treatments are faster and more tolerable. Profound RF requires significant numbing and longer treatment times due to its thermal injury approach." },
+    { type: "win", label: "No consumables", text: "Zero per-treatment costs vs Profound RF's disposable cartridges." },
+    { type: "win", label: "Versatility", text: "PiXel8 treats a wider range of indications including acne scars, stretch marks, and skin texture. Profound is primarily positioned for skin laxity and wrinkles." },
+    { type: "win", label: "Recovery time", text: "PiXel8 has 1-3 days of social downtime. Profound RF can require 5-7 days of recovery with more significant swelling and bruising." },
+    { type: "caution", label: "Candela ecosystem", text: "Practices with Candela devices may have a vendor loyalty and bundled service agreements. Approach carefully." },
+    { type: "block", label: "KOL relationships", text: "Some practice owners are Candela Key Opinion Leaders. Check the Providers tab before approaching. If KOL flag is present, do NOT pitch against Profound." }
+  ],
+  specs: [
+    ["RF Frequency", "4 MHz", "Bipolar RF (temperature controlled)"],
+    ["Treatment Approach", "Fractional RF microneedling", "Volumetric heating to 67°C"],
+    ["Downtime", "1-3 days", "5-7 days"],
+    ["Consumable Cost", "$0", "Disposable cartridges"],
+    ["Typical Treatment Price", "$800-1,200", "$1,500-3,500"],
+    ["Treatments Needed", "3-4 sessions", "1-2 sessions"]
+  ],
+  objections: [
+    { q: "Profound gives results in one treatment.", a: "Profound's single-treatment approach comes with significantly more downtime and discomfort. Many practices find that patients prefer a series of comfortable PiXel8 treatments with minimal downtime over one aggressive session. The total revenue per patient is actually higher with a 3-treatment PiXel8 series at $800 each than a single Profound at $2,000." },
+    { q: "We're a Candela practice.", a: "I respect that relationship. PiXel8 isn't here to replace your Candela devices. If your Profound is working well for you, that's great. I'd love to show you how PiXel8 could serve the patients who want RF microneedling results but aren't willing to accept the Profound recovery time." }
+  ],
+  opener: "I know you're invested in Candela technology, and I respect that. PiXel8 isn't competing with your Profound — it's serving the patients who want skin tightening and collagen remodeling but need to be back at work the next day. It's a different patient population that's currently walking out your door."
+},
+
+"pixel8-genius": {
+  rohrer: { name: "PiXel8-RF", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Genius RF", brand: "Lutronic" },
+  advantages: [
+    { type: "win", label: "4 MHz vs 2 MHz", text: "PiXel8 operates at 4 MHz. Genius uses 2 MHz bipolar RF. Higher frequency means more precise energy delivery and better tissue response." },
+    { type: "win", label: "No consumables", text: "Zero per-treatment costs. Genius RF requires disposable needle cartridges." },
+    { type: "win", label: "Simpler operation", text: "PiXel8 is straightforward to operate. Genius has a real-time impedance feedback system that adds complexity to treatment protocols." },
+    { type: "caution", label: "Clinical data", text: "Genius has strong clinical evidence and KOL support through Hologic's marketing resources. Be prepared with PiXel8 clinical data." },
+    { type: "caution", label: "Lutronic ecosystem", text: "Practices with Genius often also have LaseMD. They may have Lutronic service contracts." }
+  ],
+  specs: [
+    ["RF Frequency", "4 MHz", "2 MHz bipolar"],
+    ["Intelligence", "Consistent energy delivery", "Real-time impedance feedback"],
+    ["Consumable Cost", "$0", "Disposable cartridges"],
+    ["Needle Configuration", "Multiple pin counts", "49-pin configuration"],
+    ["Parent Company", "Rohrer Aesthetics", "Lutronic (Hologic)"]
+  ],
+  objections: [
+    { q: "Genius has intelligent real-time feedback.", a: "That's smart technology, and we respect what Lutronic built. PiXel8 takes a different approach — delivering consistent 4 MHz energy at precisely controlled depths. The higher frequency itself is the advantage. At 4 MHz, you're getting more precise tissue interaction without needing real-time adjustment because the energy delivery is inherently more targeted." },
+    { q: "Our Lutronic rep gives us great support.", a: "Service matters, and I'm glad you have a good relationship. When your Genius agreement comes up for renewal, I'd just like the chance to show you the numbers side by side — especially the consumable savings over a 5-year term. Fair enough?" }
+  ],
+  opener: "I see you're running the Lutronic Genius for RF microneedling. Smart choice — it's a solid device. When your current agreement comes up, I'd love to show you how PiXel8's 4 MHz frequency and zero-consumable model could improve both your clinical outcomes and your margins."
+},
+
+"pixel8-scarlet": {
+  rohrer: { name: "PiXel8-RF", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Scarlet SRF", brand: "Viol" },
+  advantages: [
+    { type: "win", label: "Brand recognition", text: "PiXel8 by Rohrer Aesthetics has broader market recognition and a larger installed base than Scarlet SRF by Viol." },
+    { type: "win", label: "4 MHz frequency", text: "PiXel8 at 4 MHz vs Scarlet's short-pulse RF. Higher frequency provides more consistent and precise tissue heating." },
+    { type: "win", label: "Clinical support", text: "Rohrer's clinical training and support infrastructure is more established than Viol's newer market presence." },
+    { type: "win", label: "Portfolio depth", text: "Rohrer offers 7 devices across multiple categories. Viol is primarily a single-device company, limiting the long-term partnership value." }
+  ],
+  specs: [
+    ["RF Frequency", "4 MHz", "Short-pulse RF"],
+    ["Manufacturer", "Rohrer Aesthetics (est. 2014)", "Viol (newer entrant)"],
+    ["Devices Sold", "5,000+", "Limited market data"],
+    ["Consumable Cost", "$0", "Varies"],
+    ["Full Portfolio", "7 devices", "Limited"]
+  ],
+  objections: [
+    { q: "We just bought the Scarlet.", a: "Congratulations on adding RF microneedling — your patients are going to love the results. I'd like to stay in touch and introduce you to our other devices that complement RF microneedling, like PicoLazer for pigment correction. When you're ready to expand your treatment menu, Rohrer can be your partner for the next device." }
+  ],
+  opener: "I noticed you've added the Scarlet SRF for RF microneedling. Great category to be in. I'd love to introduce you to Rohrer's broader portfolio — we have devices that complement your RF microneedling beautifully, and our no-consumables model is worth comparing as you plan your next technology investment."
+},
+
+"pixel8-vivace": {
+  rohrer: { name: "PiXel8-RF", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Vivace", brand: "Aesthetics Biomedical" },
+  advantages: [
+    { type: "win", label: "4 MHz vs 1-2 MHz", text: "PiXel8 at 4 MHz delivers significantly more precise RF energy than Vivace's lower frequency system." },
+    { type: "win", label: "No consumables", text: "Zero per-treatment costs vs Vivace's disposable needle tips." },
+    { type: "win", label: "Stronger brand", text: "Rohrer has a larger installed base (5,000+ devices) and broader clinical support network than Aesthetics Biomedical." },
+    { type: "win", label: "Technology generation", text: "PiXel8 represents a newer generation of RF microneedling technology. Vivace was an early-market device that has been surpassed by newer entrants." }
+  ],
+  specs: [
+    ["RF Frequency", "4 MHz", "1-2 MHz"],
+    ["Consumable Cost", "$0", "Disposable tips"],
+    ["Market Position", "Growing installed base", "Early entrant, aging technology"],
+    ["LED Integration", "Not integrated", "LED light therapy included"]
+  ],
+  objections: [
+    { q: "Vivace includes LED therapy.", a: "That's a nice feature. However, standalone LED panels are very affordable to add separately, and the core value of RF microneedling is the RF energy delivery — where PiXel8's 4 MHz frequency is a meaningful clinical advantage. You're better off with the best RF device plus a separate LED than a combined unit where the RF is compromised." }
+  ],
+  opener: "I see you're running the Vivace for RF microneedling. That was a great device when it launched. The technology has advanced significantly since then — PiXel8's 4 MHz frequency delivers a level of precision that wasn't available when Vivace came to market. I'd love to show you the difference and the ROI impact of zero consumable costs."
+},
+
+"pico-picosure": {
+  rohrer: { name: "PicoLazer", brand: "Rohrer Aesthetics" },
+  competitor: { name: "PicoSure", brand: "Cynosure" },
+  advantages: [
+    { type: "win", label: "Dual wavelength", text: "PicoLazer offers both 1064nm and 532nm wavelengths. PicoSure's primary wavelength is 755nm alexandrite, which is less effective on certain ink colors and darker skin types." },
+    { type: "win", label: "Pico + nano switching", text: "PicoLazer can switch between picosecond and nanosecond pulse modes, providing flexibility to address different ink depths and types in a single session." },
+    { type: "win", label: "All skin types", text: "1064nm wavelength is safer for Fitzpatrick IV-VI skin types. PicoSure's 755nm carries higher risk for darker skin tones." },
+    { type: "win", label: "Price point", text: "PicoLazer is positioned at a more competitive price point than PicoSure, improving ROI." },
+    { type: "caution", label: "First mover", text: "PicoSure was the first FDA-cleared picosecond laser (2012). It has strong brand recognition and published research." },
+    { type: "caution", label: "Focus Lens Array", text: "PicoSure's patented Focus Lens Array for skin rejuvenation is a well-known differentiator in the market." }
+  ],
+  specs: [
+    ["Wavelengths", "1064nm + 532nm", "755nm (alexandrite) + optional 532nm/1064nm"],
+    ["Pulse Modes", "Picosecond + nanosecond", "Picosecond only"],
+    ["Skin Type Safety", "All Fitzpatrick types (I-VI)", "Best for I-III, caution on IV-VI"],
+    ["Ink Color Coverage", "All colors including reds/oranges", "Best for blues/greens, limited on reds"],
+    ["FDA Cleared", "Yes", "Yes (first pico, 2012)"],
+    ["Parent Company", "Rohrer Aesthetics", "Cynosure (Hologic)"]
+  ],
+  objections: [
+    { q: "PicoSure was first to market and has the most data.", a: "PicoSure absolutely pioneered the category, and we respect that. But first doesn't always mean best. The 1064nm wavelength in PicoLazer is safer for diverse skin types and more effective on dark inks. In markets with diverse patient populations, that matters clinically. And the dual pico/nano switching gives you flexibility that a single-mode device can't offer." },
+    { q: "Patients ask for PicoSure by name.", a: "Some do, and that's because Cynosure invested heavily in consumer marketing. But what patients really want is their tattoo gone or their pigment cleared. When you show them faster results with fewer sessions — especially on colors PicoSure struggles with — the device name becomes irrelevant." },
+    { q: "We did the PicoSure FDA research here.", a: "That's incredible, and we would never ask you to move away from a device you helped bring to market. I'd love to talk about other categories where Rohrer might complement your practice — perhaps PiXel8 for RF microneedling, which is a category Cynosure doesn't address?" }
+  ],
+  opener: "I know PicoSure set the standard for picosecond lasers. PicoLazer builds on that foundation with dual wavelength capability and pico/nano switching that addresses the limitations practices have encountered with 755nm-only systems — especially on diverse skin types and resistant ink colors."
+},
+
+"pico-picoway": {
+  rohrer: { name: "PicoLazer", brand: "Rohrer Aesthetics" },
+  competitor: { name: "PicoWay", brand: "Candela" },
+  advantages: [
+    { type: "win", label: "Price point", text: "PicoLazer offers competitive pricing against PicoWay, which is Candela's premium-priced picosecond system." },
+    { type: "win", label: "No consumables", text: "Zero per-treatment costs vs potential handpiece and consumable costs with PicoWay." },
+    { type: "caution", label: "Three wavelengths", text: "PicoWay offers 1064nm, 532nm, AND 785nm — three wavelengths vs PicoLazer's two. The 785nm addresses some ink colors that dual wavelength systems handle less efficiently." },
+    { type: "caution", label: "Candela brand", text: "Candela is the market leader. PicoWay has strong clinical data and widespread adoption." },
+    { type: "block", label: "Candela KOL check", text: "Always check for Candela KOL relationships before approaching. If present, do NOT pitch PicoLazer against PicoWay." }
+  ],
+  specs: [
+    ["Wavelengths", "1064nm + 532nm", "1064nm + 532nm + 785nm"],
+    ["Pulse Duration", "Picosecond + nanosecond", "Picosecond (shortest available)"],
+    ["Price Position", "Mid-premium", "Premium"],
+    ["Consumable Cost", "$0", "Handpiece/cartridge costs"],
+    ["Parent Company", "Rohrer Aesthetics", "Candela (Apax Partners)"]
+  ],
+  objections: [
+    { q: "PicoWay has three wavelengths.", a: "It does, and the 785nm is useful for certain ink colors. For the vast majority of tattoos and pigment conditions, 1064nm and 532nm cover 90%+ of clinical needs. The question is whether the third wavelength justifies the price premium. For many practices, the answer is no — especially when you factor in PicoLazer's zero consumable costs over a 5-year term." },
+    { q: "We're a Candela practice.", a: "Understood, and I respect that partnership. PicoLazer may not be the right conversation today. But I'd love to show you PiXel8 for RF microneedling — a category Candela addresses with Profound, but where our 4 MHz technology and zero consumables offer a compelling alternative." }
+  ],
+  opener: "PicoWay is an excellent device. If you're happy with it, I'm not here to disrupt that. What I am here to talk about is whether Rohrer has other devices that could complement your Candela investment in categories where you might have a gap."
+},
+
+"pico-enlighten": {
+  rohrer: { name: "PicoLazer", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Enlighten", brand: "Cutera" },
+  advantages: [
+    { type: "win", label: "Similar dual wavelength", text: "Both offer 1064nm and 532nm. PicoLazer matches Enlighten's wavelength coverage." },
+    { type: "win", label: "Price advantage", text: "PicoLazer is competitively priced against Cutera's Enlighten system." },
+    { type: "win", label: "Broader portfolio", text: "Rohrer offers 7 complementary devices. Cutera's aesthetic portfolio, while strong, positions differently in the RF microneedling space." },
+    { type: "caution", label: "Enlighten III", text: "Newer Enlighten III adds a 670nm wavelength for broader ink color coverage. Check which generation the practice owns." }
+  ],
+  specs: [
+    ["Wavelengths", "1064nm + 532nm", "1064nm + 532nm (+ 670nm on III)"],
+    ["Pulse Modes", "Picosecond + nanosecond", "Picosecond + nanosecond"],
+    ["Consumable Cost", "$0", "Varies by handpiece"],
+    ["Parent Company", "Rohrer Aesthetics", "Cutera Inc."]
+  ],
+  objections: [
+    { q: "Enlighten III has three wavelengths now.", a: "If they have the III, acknowledge it's a strong device. Focus the conversation on Rohrer's broader portfolio instead — PiXel8 for RF microneedling is likely a gap if they're a Cutera practice, since Cutera's Secret RF is their only entry and it doesn't match PiXel8's 4 MHz specification." }
+  ],
+  opener: "I see you're running the Cutera Enlighten for pico treatments. Great device — similar wavelength approach to what we offer. I'm actually more interested in talking about RF microneedling. Is that a treatment category you're exploring?"
+},
+
+"pico-qswitch": {
+  rohrer: { name: "PicoLazer", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Q-Switched Nd:YAG", brand: "Various (legacy)" },
+  advantages: [
+    { type: "win", label: "Generation leap", text: "Picosecond pulses shatter ink particles more effectively than nanosecond Q-switched pulses. Published data shows 2x faster tattoo clearance with pico technology." },
+    { type: "win", label: "Fewer sessions needed", text: "Pico technology typically clears tattoos in 4-6 sessions vs 8-12+ for Q-switched systems. Fewer sessions means happier patients and faster treatment room turnover." },
+    { type: "win", label: "Less tissue damage", text: "Ultra-short pico pulses create less thermal damage to surrounding tissue, resulting in faster healing, less scarring risk, and ability to treat more frequently." },
+    { type: "win", label: "Skin rejuvenation", text: "PicoLazer can do skin rejuvenation and pigment correction beyond tattoo removal. Most Q-switched lasers are limited to tattoo and basic pigment work." },
+    { type: "win", label: "All ink colors", text: "Dual wavelength pico handles all ink colors effectively. Q-switched systems often struggle with reds, oranges, and certain blues." }
+  ],
+  specs: [
+    ["Pulse Duration", "Picoseconds (trillionths)", "Nanoseconds (billionths)"],
+    ["Sessions for Tattoo Removal", "4-6 typical", "8-12+ typical"],
+    ["Ink Color Coverage", "All colors", "Limited on reds/oranges"],
+    ["Skin Rejuvenation", "Yes", "Limited"],
+    ["Tissue Damage", "Minimal (photoacoustic)", "Higher (photothermal)"],
+    ["Treatment Intervals", "4-6 weeks", "6-8 weeks"]
+  ],
+  objections: [
+    { q: "Our Q-switch still works fine.", a: "It does work, and your patients are getting results. But they're getting results in 10-12 sessions when PicoLazer could deliver the same clearance in 5-6. That's 50% fewer appointments per patient — which means faster turnover and room for more patients on your schedule. The ROI isn't just about the device cost, it's about the revenue per treatment hour." },
+    { q: "We can't justify a new device when this one isn't paid off.", a: "Completely understand. Let's plan for when your current device reaches end of life. In the meantime, I can show you the ROI calculator so you have the numbers ready when the timing is right. When is your current device's lease up?" }
+  ],
+  opener: "I see you've been doing tattoo removal with a Q-switched system. You've built a great patient base for that service. PicoLazer represents the next generation — clearing tattoos in half the sessions with less patient discomfort. I'd love to show you what that means for your revenue per treatment hour."
+},
+
+"spectrum-m22": {
+  rohrer: { name: "Spectrum", brand: "Rohrer Aesthetics" },
+  competitor: { name: "M22", brand: "Lumenis" },
+  advantages: [
+    { type: "win", label: "5 modalities built-in", text: "Spectrum includes IPL, Erbium YAG, Long Pulse YAG, Q-Switch, and 810nm Diode — all standard. M22 requires purchasing separate modules (IPL, ResurFX, Q-Switch) individually." },
+    { type: "win", label: "No consumables", text: "Zero ongoing costs. M22 has module-specific consumable and maintenance costs." },
+    { type: "win", label: "Price advantage", text: "Spectrum's all-inclusive pricing vs M22's base unit plus module add-ons. Total cost of ownership is significantly lower." },
+    { type: "win", label: "Hair removal included", text: "810nm diode is built into Spectrum. M22 requires a separate handpiece for hair removal." },
+    { type: "caution", label: "Lumenis brand", text: "Lumenis M22 has strong brand recognition and established clinical data." },
+    { type: "caution", label: "ResurFX module", text: "M22's ResurFX fractional module is well-regarded. Spectrum's Erbium YAG provides resurfacing but through a different mechanism." }
+  ],
+  specs: [
+    ["Modalities Included", "5 (all standard)", "Up to 3 (purchased separately)"],
+    ["IPL", "Included", "Included (base)"],
+    ["Fractional Resurfacing", "Erbium YAG", "ResurFX 1565nm"],
+    ["Q-Switch Pigment", "Included", "Add-on module"],
+    ["Hair Removal", "810nm Diode (included)", "Separate handpiece"],
+    ["Long Pulse YAG", "Included", "Not available"],
+    ["Consumable Cost", "$0", "Module-dependent"]
+  ],
+  objections: [
+    { q: "M22 is the industry standard multi-platform.", a: "M22 is an excellent system. But when you add up the base unit plus IPL module plus ResurFX plus Q-Switch plus the hair removal handpiece, the total investment is significantly higher than Spectrum — and you're still paying consumable costs on top. Spectrum gives you five modalities out of the box for one price with zero ongoing costs." },
+    { q: "We already have the M22.", a: "Great platform. I'm not suggesting you replace it. But as you expand services or open new locations, Spectrum is worth evaluating for the next treatment room. And if your M22 is approaching end of life, let's talk about what the total cost of replacing it with modules looks like vs Spectrum all-in." }
+  ],
+  opener: "I see you're running the Lumenis M22. Versatile system. As you think about expanding your treatment capabilities or refreshing technology, I'd love to show you how Spectrum delivers five built-in modalities including hair removal — all for one price with no consumable costs."
+},
+
+"spectrum-xeo": {
+  rohrer: { name: "Spectrum", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Xeo", brand: "Cutera" },
+  advantages: [
+    { type: "win", label: "Newer technology", text: "Cutera Xeo is an older platform. Many Xeo units in the field are 10-15+ years old and approaching or past end of life." },
+    { type: "win", label: "More modalities", text: "Spectrum offers 5 built-in modalities. Xeo's capabilities depend on which handpieces were purchased, and older units may have limited configurations." },
+    { type: "win", label: "No consumables", text: "Zero ongoing costs vs Xeo's handpiece maintenance and flashlamp replacement costs which increase as the unit ages." },
+    { type: "win", label: "Modern interface", text: "Spectrum has a modern user interface and treatment protocols. Xeo's software is dated and may lack newer treatment guidance." },
+    { type: "win", label: "Service costs", text: "Aging Xeo units have increasing maintenance costs. Replacement parts become harder to source. Spectrum is new with full warranty." }
+  ],
+  specs: [
+    ["Generation", "Current", "Legacy (aging)"],
+    ["Modalities", "5 built-in", "Varies by handpiece config"],
+    ["Consumable Cost", "$0", "Increasing with age"],
+    ["Service/Parts", "Full warranty", "Aging, parts scarce"],
+    ["User Interface", "Modern touchscreen", "Older interface"]
+  ],
+  objections: [
+    { q: "Our Xeo still works.", a: "It's a durable machine, no question. But how much did you spend on service last year? And how much downtime did you have waiting for parts? At some point the cost of keeping an aging device running exceeds the cost of replacing it. Spectrum gives you more capability, zero consumables, and a fresh warranty — and the monthly payment may be less than your annual Xeo service contract." }
+  ],
+  opener: "I see you've been running a Cutera Xeo. That's a workhorse device that's served a lot of practices well. As it ages, I'd love to show you how Spectrum gives you more treatment capabilities with zero consumable costs — and how the financing math compares to what you're spending on Xeo maintenance."
+},
+
+"spectrum-multi": {
+  rohrer: { name: "Spectrum", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Multiple Single-Purpose Devices", brand: "Various" },
+  advantages: [
+    { type: "win", label: "One device, five capabilities", text: "Spectrum replaces the need for separate IPL, hair removal laser, resurfacing laser, Q-switch, and vascular laser. One purchase, one footprint, one service contract." },
+    { type: "win", label: "Space savings", text: "One device takes the floor space of one device. Five separate devices need five spaces. For smaller practices, room real estate matters." },
+    { type: "win", label: "One training curve", text: "Staff learns one platform instead of five. Reduces training time, reduces errors, increases efficiency." },
+    { type: "win", label: "One service contract", text: "Instead of maintaining service agreements with 3-5 different manufacturers, you have one relationship with Rohrer." },
+    { type: "win", label: "Total cost advantage", text: "The total cost of Spectrum is a fraction of purchasing 3-5 separate single-purpose devices. Even against used equipment, the no-consumables savings compound over time." }
+  ],
+  specs: [
+    ["Devices Needed", "1", "3-5 separate units"],
+    ["Floor Space", "1 unit footprint", "3-5 unit footprints"],
+    ["Service Contracts", "1", "3-5"],
+    ["Staff Training", "1 platform", "3-5 different systems"],
+    ["Consumable Costs", "$0 across all modalities", "Varies per device"],
+    ["Total 5-Year Cost", "Device payment only", "Multiple payments + consumables + service"]
+  ],
+  objections: [
+    { q: "A dedicated device is always better than a multi-platform.", a: "For the highest-volume specialty practices, that can be true. But most practices don't do 40 IPL treatments a day. They do 5 IPL, 3 hair removal, 2 resurfacing, and 1 pigment treatment. For that mix, Spectrum delivers every treatment at clinical quality while dramatically reducing your total equipment investment and operating costs." },
+    { q: "We already own several devices.", a: "And when those devices reach end of life — one by one — Spectrum is worth evaluating as the replacement that consolidates your suite. Which device is closest to needing replacement?" }
+  ],
+  opener: "I noticed your practice is running several different devices for different treatments — separate units for IPL, hair removal, resurfacing. Spectrum consolidates all of those into one platform with five built-in modalities and zero consumable costs. I'd love to show you what that means for your total cost of ownership and your staff efficiency."
+},
+
+"bodytone-emsculpt": {
+  rohrer: { name: "BodyTone", brand: "Rohrer Aesthetics" },
+  competitor: { name: "Emsculpt NEO", brand: "BTL" },
+  advantages: [
+    { type: "win", label: "8 applicators", text: "BodyTone has 8 applicators — more coverage area per session than Emsculpt NEO's 2-4 applicators. Treat more body areas simultaneously." },
+    { type: "win", label: "Price advantage", text: "BodyTone is positioned at a more competitive price point than Emsculpt NEO, improving practice ROI." },
+    { type: "win", label: "Muscle-focused", text: "BodyTone focuses specifically on muscle stimulation. Emsculpt NEO combines HIFEM + RF, which some practitioners feel dilutes the muscle toning effect." },
+    { type: "caution", label: "BTL brand power", text: "BTL has invested heavily in marketing Emsculpt. Consumer awareness of the Emsculpt brand is very high." },
+    { type: "caution", label: "NEO dual modality", text: "Emsculpt NEO's combined muscle + fat reduction in one treatment is a compelling patient proposition that BodyTone doesn't match." }
+  ],
+  specs: [
+    ["Applicators", "8", "2-4"],
+    ["Technology", "EMS muscle stimulation", "HIFEM + RF (dual)"],
+    ["Treatment Areas/Session", "Multiple simultaneous", "1-2 areas"],
+    ["Fat Reduction", "Muscle only", "Combined muscle + fat"],
+    ["Price Position", "Mid-tier", "Premium"],
+    ["Treatment Time", "30 min", "30 min"]
+  ],
+  objections: [
+    { q: "Emsculpt NEO does fat AND muscle.", a: "It does, and that's a smart value proposition. But many of your patients are already coming to you after CoolSculpting for fat reduction. They don't need to pay for fat reduction again — they need the muscle toning piece. BodyTone gives them exactly that at a lower treatment price, which means more patients can afford it and more patients come through your door." },
+    { q: "Patients ask for Emsculpt by name.", a: "BTL has done great consumer marketing. But what patients are really asking for is a toned body. When you explain that BodyTone's 8 applicators cover more area per session at a better price, the device name doesn't drive the decision — the results and the value do." }
+  ],
+  opener: "I see you're offering CoolSculpting for fat reduction. The natural next question your patients are asking is: 'Now that the fat is gone, how do I tone the muscle underneath?' BodyTone answers that question with 8 applicators that cover more area per session than any other muscle toning device on the market."
+},
+
+"bodytone-cooltone": {
+  rohrer: { name: "BodyTone", brand: "Rohrer Aesthetics" },
+  competitor: { name: "CoolTone", brand: "Allergan" },
+  advantages: [
+    { type: "win", label: "8 applicators vs fewer", text: "BodyTone's 8 applicators provide significantly more body coverage per session than CoolTone's more limited applicator configuration." },
+    { type: "win", label: "Treatment versatility", text: "8 applicators allow treatment of multiple areas simultaneously — abs, glutes, arms, legs — in a single session." },
+    { type: "win", label: "Independent device", text: "BodyTone is standalone. CoolTone is part of the Allergan ecosystem and may be bundled with CoolSculpting agreements." },
+    { type: "caution", label: "Allergan relationship", text: "Practices with CoolSculpting likely have an Allergan relationship. CoolTone may be a natural add from their existing rep." }
+  ],
+  specs: [
+    ["Applicators", "8", "Fewer applicators"],
+    ["Technology", "EMS", "Magnetic Muscle Stimulation (MMS)"],
+    ["Areas Per Session", "Multiple simultaneous", "Limited"],
+    ["Ecosystem", "Standalone", "Allergan (with CoolSculpting)"],
+    ["Price Position", "Competitive", "Mid-premium"]
+  ],
+  objections: [
+    { q: "Our Allergan rep offered CoolTone as a bundle with CoolSculpting.", a: "Bundling is convenient, but the question is whether you're getting the best muscle toning device or just the most convenient one. BodyTone's 8 applicators mean your patients get more coverage per session, which means better results and more efficient use of your treatment room time. I'd love to show you the side-by-side." }
+  ],
+  opener: "You're already offering CoolSculpting and your patients love it. For muscle toning, before you default to CoolTone through your Allergan rep, take a look at BodyTone's 8-applicator system. The coverage difference per session is significant — and your patients will notice."
+},
+
+"phoenix-co2re": {
+  rohrer: { name: "Phoenix", brand: "Rohrer Aesthetics" },
+  competitor: { name: "CO2RE", brand: "Candela" },
+  advantages: [
+    { type: "win", label: "Women's health handpiece", text: "Phoenix includes a women's health / vaginal rejuvenation handpiece. This opens an entirely separate revenue stream (often $1,000-2,500 per treatment) that CO2RE doesn't address without a separate device." },
+    { type: "win", label: "Dual revenue streams", text: "One device serves both aesthetic resurfacing patients AND women's health patients. Two patient populations, one investment." },
+    { type: "win", label: "Price advantage", text: "Phoenix is competitively priced against CO2RE with the added women's health capability included." },
+    { type: "caution", label: "Candela ecosystem", text: "CO2RE practices are in the Candela ecosystem. Check for KOL relationships and multi-device contracts." },
+    { type: "block", label: "KOL check", text: "Always verify Candela KOL status before approaching. If present, pivot to non-competing devices." }
+  ],
+  specs: [
+    ["CO2 Resurfacing", "Yes", "Yes"],
+    ["Women's Health", "Included", "Not available"],
+    ["Revenue Streams", "2 (aesthetic + women's health)", "1 (aesthetic only)"],
+    ["Consumable Cost", "Minimal", "Varies"],
+    ["Parent Company", "Rohrer Aesthetics", "Candela (Apax Partners)"]
+  ],
+  objections: [
+    { q: "CO2RE is proven and reliable.", a: "Absolutely. If your CO2RE is serving you well for resurfacing, I respect that. The conversation I'd love to have is about women's health. Are your patients asking about vaginal rejuvenation? Phoenix lets you say yes to those patients with the same device you're already using for facial resurfacing. It's not a replacement — it's a revenue expansion." },
+    { q: "We're a Candela practice.", a: "Understood. I'll focus on categories where we complement rather than compete. Is women's health a service your patients have been asking about? Phoenix might fit as an addition to your Candela suite, not a replacement for CO2RE." }
+  ],
+  opener: "Your CO2 resurfacing results speak for themselves. I'm here to talk about the other side of the Phoenix platform — women's health. Are your patients asking about vaginal rejuvenation? Phoenix lets you add that high-value service without buying a second device."
+},
+
+"phoenix-acupulse": {
+  rohrer: { name: "Phoenix", brand: "Rohrer Aesthetics" },
+  competitor: { name: "AcuPulse", brand: "Lumenis" },
+  advantages: [
+    { type: "win", label: "Women's health included", text: "Phoenix includes vaginal rejuvenation capability. Lumenis offers this through a separate FemTouch device, requiring a second purchase." },
+    { type: "win", label: "One device, two revenue streams", text: "Phoenix does aesthetic resurfacing AND women's health. With Lumenis you need AcuPulse for resurfacing and FemTouch for women's health — two devices, two service contracts, two investments." },
+    { type: "win", label: "Price advantage", text: "Phoenix with women's health included vs AcuPulse + FemTouch purchased separately." },
+    { type: "caution", label: "Lumenis clinical data", text: "AcuPulse and FemTouch both have established clinical data and installed base." }
+  ],
+  specs: [
+    ["CO2 Resurfacing", "Yes", "Yes (SuperPulse technology)"],
+    ["Women's Health", "Included (same device)", "Separate device (FemTouch)"],
+    ["Total Investment for Both", "1 device", "2 devices"],
+    ["Service Contracts", "1", "2"],
+    ["Parent Company", "Rohrer Aesthetics", "Lumenis (Baring PE)"]
+  ],
+  objections: [
+    { q: "AcuPulse has superior scanning technology.", a: "Lumenis makes excellent CO2 devices. If you're happy with AcuPulse for resurfacing, I'm not here to change that. But are you also running a FemTouch for women's health? If not, and your patients are asking about vaginal rejuvenation, Phoenix gives you that capability without buying a second device. If you already have FemTouch, then you're well covered — let me show you PiXel8 for RF microneedling instead, since Lumenis doesn't make one." }
+  ],
+  opener: "I see you're running the Lumenis AcuPulse for resurfacing. Great device. Do you also have the FemTouch for women's health? If not, Phoenix gives you both capabilities in one platform — CO2 resurfacing plus vaginal rejuvenation — without needing a second Lumenis device."
+}
+
+};
+
+function showCard() {
+  const key = document.getElementById('matchup').value;
+  const card = battleCards[key];
+  if (!card) return;
+  
+  const container = document.getElementById('cards-container');
+  let html = '';
+  
+  html += `<div class="matchup-header">
+    <div class="matchup-device"><div class="name">${card.rohrer.name}</div><div class="brand">${card.rohrer.brand}</div></div>
+    <div class="matchup-vs">VS</div>
+    <div class="matchup-device"><div class="name">${card.competitor.name}</div><div class="brand">${card.competitor.brand}</div></div>
+  </div>`;
+  
+  html += `<div class="opener"><div class="opener-label">Suggested opener</div><div class="opener-text">"${card.opener}"</div></div>`;
+  
+  html += `<div class="card"><div class="card-title">Key advantages & considerations</div>`;
+  card.advantages.forEach(a => {
+    let iconClass, labelClass;
+    if (a.type === 'win') { iconClass = 'win-icon'; labelClass = 'win-label'; }
+    else if (a.type === 'block') { iconClass = 'lose-icon'; labelClass = 'lose-label'; }
+    else { iconClass = 'neutral-icon'; labelClass = 'neutral-label'; }
+    
+    const iconSymbol = a.type === 'win' ? '+' : a.type === 'block' ? '!' : '~';
+    
+    html += `<div class="win-row">
+      <div class="${iconClass}">${iconSymbol}</div>
+      <div class="win-text"><span class="${labelClass}">${a.label}:</span> ${a.text}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  
+  html += `<div class="card"><div class="card-title">Spec comparison</div>
+    <table class="spec-table">
+      <tr><th>Specification</th><th>${card.rohrer.name}</th><th>${card.competitor.name}</th></tr>`;
+  card.specs.forEach(s => {
+    html += `<tr><td>${s[0]}</td><td class="rohrer">${s[1]}</td><td class="competitor">${s[2]}</td></tr>`;
+  });
+  html += `</table></div>`;
+  
+  html += `<div class="card"><div class="card-title">Objection handling</div>`;
+  card.objections.forEach(o => {
+    html += `<div class="objection">
+      <div class="objection-q">"${o.q}"</div>
+      <div class="objection-a">${o.a}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  
+  container.innerHTML = html;
+}
+
+showCard();
+</script>
+</body>
+</html>
