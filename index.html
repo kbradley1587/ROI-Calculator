@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rohrer Aesthetics ROI Calculator</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 16px; }
@@ -33,6 +35,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .field input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #1B3A5C; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .field .output { font-size: 14px; font-weight: 600; min-width: 65px; text-align: right; color: #1B3A5C; }
 .field select { font-size: 14px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; width: 100%; }
+.field input[type="text"], .field input[type="email"], .field input[type="tel"] {
+  font-size: 14px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; width: 100%;
+  font-family: inherit;
+}
+.field input[type="text"]:focus, .field input[type="email"]:focus, .field input[type="tel"]:focus {
+  outline: none; border-color: #1B3A5C;
+}
 .field .hint { font-size: 11px; color: #aaa; margin-top: 3px; margin-left: 100px; }
 
 .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
@@ -46,7 +55,192 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 .chart-container { position: relative; height: 220px; margin-top: 10px; }
 
+.info-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.info-section-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; margin-top: 4px; }
+.info-section-label:first-child { margin-top: 0; }
+
+.export-btn {
+  width: 100%;
+  background: #1B3A5C;
+  color: #fff;
+  border: none;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 14px;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+  transition: background 0.15s;
+}
+.export-btn:hover { background: #15304d; }
+.export-btn:disabled { background: #888; cursor: not-allowed; }
+.export-btn .spinner {
+  display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; }
+
+/* PDF render area — offscreen, fixed-width to ensure consistent capture */
+.pdf-render-area {
+  position: fixed;
+  top: -10000px;
+  left: 0;
+  width: 794px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.pdf-page {
+  width: 794px;
+  min-height: 1123px;
+  padding: 56px 56px 48px;
+  background: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* COVER PAGE — premium branded look */
+.pdf-cover-header {
+  border-bottom: 3px solid #1B3A5C;
+  padding-bottom: 20px;
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pdf-cover-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pdf-cover-brand img.lion { height: 56px; width: auto; }
+.pdf-cover-brand img.wordmark { height: 30px; width: auto; }
+.pdf-cover-date { font-size: 12px; color: #888; }
+
+.pdf-cover-eyebrow { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 14px; font-weight: 600; }
+.pdf-cover-title { font-size: 38px; font-weight: 700; color: #1B3A5C; line-height: 1.15; margin-bottom: 18px; letter-spacing: -0.5px; }
+.pdf-cover-subtitle { font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 40px; max-width: 560px; }
+
+.pdf-cover-prepared {
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+  border-radius: 14px;
+  padding: 30px 32px;
+  margin-bottom: 32px;
+  border-left: 4px solid #1B3A5C;
+}
+.pdf-prepared-title {
+  font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px; font-weight: 600;
+}
+.pdf-prepared-practice { font-size: 24px; font-weight: 700; color: #1B3A5C; margin-bottom: 6px; line-height: 1.2; }
+.pdf-prepared-doctor { font-size: 16px; color: #444; }
+
+.pdf-cover-summary {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 36px;
+}
+.pdf-summary-card {
+  background: #1B3A5C; color: #fff; border-radius: 12px; padding: 22px 24px;
+}
+.pdf-summary-card.alt { background: #fff; color: #1B3A5C; border: 2px solid #1B3A5C; }
+.pdf-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.75; margin-bottom: 8px; font-weight: 600; }
+.pdf-summary-card.alt .pdf-summary-label { opacity: 1; color: #888; }
+.pdf-summary-value { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+
+.pdf-cover-rep {
+  margin-top: auto;
+  border-top: 1px solid #d8d8d8;
+  padding-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.pdf-rep-block-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 700; }
+.pdf-rep-name { font-size: 15px; font-weight: 700; color: #1B3A5C; margin-bottom: 6px; }
+.pdf-rep-contact { font-size: 12px; color: #555; line-height: 1.7; }
+.pdf-rep-tagline { font-size: 13px; color: #555; line-height: 1.5; }
+
+/* RESULTS PAGE */
+.pdf-results-header {
+  border-bottom: 2px solid #1B3A5C;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pdf-results-title-block { }
+.pdf-results-eyebrow { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; font-weight: 600; }
+.pdf-results-title { font-size: 22px; font-weight: 700; color: #1B3A5C; }
+.pdf-results-brand { display: flex; align-items: center; gap: 10px; }
+.pdf-results-brand img.lion { height: 36px; width: auto; }
+.pdf-results-brand img.wordmark { height: 20px; width: auto; }
+
+.pdf-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1B3A5C;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+  margin-top: 16px;
+}
+.pdf-section-title:first-child { margin-top: 0; }
+
+.pdf-metrics-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;
+}
+.pdf-metric {
+  background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px 14px;
+}
+.pdf-metric.highlight { background: #1B3A5C; border-color: #1B3A5C; }
+.pdf-metric .pdf-metric-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }
+.pdf-metric.highlight .pdf-metric-label { color: rgba(255,255,255,0.75); }
+.pdf-metric .pdf-metric-value { font-size: 19px; font-weight: 700; color: #1B3A5C; letter-spacing: -0.3px; }
+.pdf-metric.highlight .pdf-metric-value { color: #fff; }
+
+.pdf-inputs-table { width: 100%; border-collapse: collapse; }
+.pdf-inputs-table td {
+  font-size: 11.5px;
+  padding: 7px 8px;
+  border-bottom: 1px solid #eee;
+}
+.pdf-inputs-table tr:last-child td { border-bottom: none; }
+.pdf-inputs-table td:first-child { color: #888; width: 55%; }
+.pdf-inputs-table td:last-child { color: #1a1a1a; font-weight: 600; text-align: right; }
+
+.pdf-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+.pdf-tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pdf-tax-box { background: #f0f7f4; border-radius: 8px; padding: 11px 14px; }
+.pdf-tax-label { font-size: 10px; color: #0F6E56; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; font-weight: 600; }
+.pdf-tax-value { font-size: 18px; font-weight: 700; color: #0F6E56; }
+
+.pdf-advantage {
+  background: #E6F1FB; border-radius: 10px; padding: 12px 14px; margin-top: 12px;
+}
+.pdf-adv-title { font-size: 11.5px; font-weight: 700; color: #185FA5; margin-bottom: 4px; }
+.pdf-adv-text { font-size: 11px; color: #185FA5; line-height: 1.5; }
+
+.pdf-chart-wrap {
+  height: 220px;
+  position: relative;
+}
+
+.pdf-disclaimer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+  font-size: 9px;
+  color: #999;
+  line-height: 1.6;
+  text-align: center;
+}
+.pdf-disclaimer strong { color: #1B3A5C; }
+
 </style>
 </head>
 <body>
@@ -76,7 +270,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <div class="card">
-  <div class="card-title">Device & financing</div>
+  <div class="card-title">Device &amp; financing</div>
 
   <div class="field">
     <label style="display: block; margin-bottom: 6px;">Rohrer device</label>
@@ -208,85 +402,107 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
 </div>
 
+<!-- Practice & rep info for branded export -->
+<div class="card">
+  <div class="card-title">Prepare branded report</div>
+
+  <div class="info-section-label">Practice</div>
+  <div class="info-grid">
+    <div class="field">
+      <input type="text" id="practice-name" placeholder="Practice name" />
+    </div>
+    <div class="field">
+      <input type="text" id="doctor-name" placeholder="Doctor name (e.g., Dr. Jane Smith)" />
+    </div>
+  </div>
+
+  <div class="info-section-label">Your contact info</div>
+  <div class="info-grid">
+    <div class="field">
+      <input type="text" id="rep-name" placeholder="Your name" />
+    </div>
+    <div class="field">
+      <input type="tel" id="rep-phone" placeholder="Phone" />
+    </div>
+    <div class="field">
+      <input type="email" id="rep-email" placeholder="Email" />
+    </div>
+  </div>
+</div>
+
+<button class="export-btn" id="export-btn">Export branded PDF</button>
+
 <div class="footer">
   Rohrer Aesthetics ROI Calculator — Powered by 3AM Solutions<br>
   Estimates only. Actual results vary by practice volume and market conditions.
 </div>
 
+<!-- Offscreen PDF render area -->
+<div class="pdf-render-area" id="pdf-render-area" aria-hidden="true"></div>
+
 <script>
+// ============================================================
+// BRAND ASSETS — Rohrer Aesthetics logos (embedded as data URIs)
+// ============================================================
+const LION_LOGO = "data:image/jpeg;base64,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";
+const WORDMARK_LOGO = "data:image/jpeg;base64,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";
+
 const deviceDefaults = {
-  pixel8:    { price: 67000,  txPrice: 800 },
-  picolazer: { price: 100000, txPrice: 600 },
-  spectrum:  { price: 80000,  txPrice: 500 },
-  phoenix:   { price: 60000,  txPrice: 1000 },
-  pixe:      { price: 80000,  txPrice: 700 },
-  bodytone:  { price: 50000,  txPrice: 400 },
-  ultralight:{ price: 20000,  txPrice: 150 },
-  custom:    { price: 67000,  txPrice: 800 }
+  pixel8:    { price: 67000,  txPrice: 800,  name: "PiXel8-RF — RF Microneedling" },
+  picolazer: { price: 100000, txPrice: 600,  name: "PicoLazer — Picosecond Laser" },
+  spectrum:  { price: 80000,  txPrice: 500,  name: "Spectrum — 5-in-1 Platform" },
+  phoenix:   { price: 60000,  txPrice: 1000, name: "Phoenix — CO2 Laser" },
+  pixe:      { price: 80000,  txPrice: 700,  name: "Pix:E — RF + Erbium Combo" },
+  bodytone:  { price: 50000,  txPrice: 400,  name: "BodyTone — Muscle Stimulation" },
+  ultralight:{ price: 20000,  txPrice: 150,  name: "UltraLight — LED Therapy" },
+  custom:    { price: 67000,  txPrice: 800,  name: "Custom configuration" }
 };
 
 const $ = id => document.getElementById(id);
 
 function fmt(n) {
-  if (Math.abs(n) >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
-  if (Math.abs(n) >= 100000) return '$' + Math.round(n / 1000) + 'K';
-  return '$' + Math.round(n).toLocaleString();
+  if (Math.abs(n) >= 1000000) return "$" + (n / 1000000).toFixed(1) + "M";
+  if (Math.abs(n) >= 100000) return "$" + Math.round(n / 1000) + "K";
+  return "$" + Math.round(n).toLocaleString();
+}
+function fmtFull(n) { return "$" + Math.round(n).toLocaleString(); }
+
+function getInputs() {
+  return {
+    deviceKey: $("device").value,
+    price: parseInt($("price").value),
+    months: parseInt($("term").value),
+    annualRate: parseFloat($("rate").value) / 100,
+    rateRaw: parseFloat($("rate").value),
+    consumable: parseInt($("consumable").value),
+    txPrice: parseInt($("tx-price").value),
+    txWeek: parseInt($("tx-week").value),
+    staffCost: parseInt($("staff-cost").value),
+    taxRate: parseFloat($("tax-bracket").value),
+  };
 }
 
-function fmtFull(n) {
-  return '$' + Math.round(n).toLocaleString();
-}
-
-let chart = null;
-
-function calculate() {
-  const price = parseInt($('price').value);
-  const months = parseInt($('term').value);
-  const annualRate = parseFloat($('rate').value) / 100;
+function compute(inputs) {
+  const { price, months, annualRate, consumable, txPrice, txWeek, staffCost, taxRate } = inputs;
   const monthlyRate = annualRate / 12;
-  const consumable = parseInt($('consumable').value);
-  const txPrice = parseInt($('tx-price').value);
-  const txWeek = parseInt($('tx-week').value);
-  const staffCost = parseInt($('staff-cost').value);
-  const taxRate = parseFloat($('tax-bracket').value);
-
   const monthlyPayment = monthlyRate > 0
     ? price * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)
     : price / months;
-
   const txPerMonth = txWeek * 4.33;
   const monthlyRevenue = txPerMonth * txPrice;
   const monthlyCosts = monthlyPayment + (txPerMonth * consumable) + (txPerMonth * staffCost);
   const monthlyProfit = monthlyRevenue - monthlyCosts;
   const monthsToBreakeven = monthlyProfit > 0 ? price / monthlyProfit : 999;
   const year1Profit = monthlyProfit * 12;
-
-  $('price-out').textContent = fmtFull(price);
-  $('rate-out').textContent = parseFloat($('rate').value).toFixed(1) + '%';
-  $('consumable-out').textContent = '$' + consumable;
-  $('tx-price-out').textContent = '$' + txPrice;
-  $('tx-week-out').textContent = txWeek;
-  $('staff-cost-out').textContent = '$' + staffCost;
-  $('monthly-payment').textContent = fmtFull(monthlyPayment);
-
-  $('monthly-rev').textContent = fmt(monthlyRevenue);
-  $('monthly-profit').textContent = fmt(monthlyProfit);
-  $('breakeven').textContent = monthsToBreakeven < 999 ? monthsToBreakeven.toFixed(1) + ' mo' : 'N/A';
-  $('year1-profit').textContent = fmt(year1Profit);
-
-  $('sec179-deduction').textContent = fmtFull(price);
-  $('sec179-savings').textContent = fmtFull(price * taxRate);
-
+  const sec179Deduction = price;
+  const sec179Savings = price * taxRate;
   const competitorCost = 30;
   const annualTx = txWeek * 52;
-  const annualSavings = annualTx * competitorCost;
-  $('consumable-savings').textContent =
-    `At ${txWeek} treatments/week, $0 consumables vs a $${competitorCost}/tx competitor saves ${fmtFull(annualSavings)}/year — ${fmtFull(annualSavings * 5)} over 5 years.`;
+  const annualConsumableSavings = annualTx * competitorCost;
 
-  const labels = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'];
+  const labels = ["Year 1","Year 2","Year 3","Year 4","Year 5"];
   const cumRevenue = [], cumProfit = [], cumCost = [];
   let tRev = 0, tProfit = 0, tCost = 0;
-
   for (let y = 1; y <= 5; y++) {
     const yRev = monthlyRevenue * 12;
     const yPay = y <= Math.ceil(months / 12) ? monthlyPayment * 12 : 0;
@@ -300,62 +516,336 @@ function calculate() {
     cumCost.push(Math.round(tCost));
   }
 
-  if (chart) chart.destroy();
+  return {
+    monthlyPayment, txPerMonth, monthlyRevenue, monthlyCosts, monthlyProfit,
+    monthsToBreakeven, year1Profit, sec179Deduction, sec179Savings,
+    competitorCost, annualConsumableSavings,
+    chart: { labels, cumRevenue, cumProfit, cumCost }
+  };
+}
 
-  chart = new Chart($('chart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Cumulative revenue', data: cumRevenue, backgroundColor: '#85B7EB', borderRadius: 4 },
-        { label: 'Cumulative profit', data: cumProfit, backgroundColor: '#5DCAA5', borderRadius: 4 },
-        { label: 'Cumulative cost', data: cumCost, backgroundColor: '#F09595', borderRadius: 4 },
-      ]
-    },
+// ============================================================
+// LIVE UI
+// ============================================================
+let chart = null;
+function calculate() {
+  const inputs = getInputs();
+  const r = compute(inputs);
+  $("price-out").textContent = fmtFull(inputs.price);
+  $("rate-out").textContent = inputs.rateRaw.toFixed(1) + "%";
+  $("consumable-out").textContent = "$" + inputs.consumable;
+  $("tx-price-out").textContent = "$" + inputs.txPrice;
+  $("tx-week-out").textContent = inputs.txWeek;
+  $("staff-cost-out").textContent = "$" + inputs.staffCost;
+  $("monthly-payment").textContent = fmtFull(r.monthlyPayment);
+  $("monthly-rev").textContent = fmt(r.monthlyRevenue);
+  $("monthly-profit").textContent = fmt(r.monthlyProfit);
+  $("breakeven").textContent = r.monthsToBreakeven < 999 ? r.monthsToBreakeven.toFixed(1) + " mo" : "N/A";
+  $("year1-profit").textContent = fmt(r.year1Profit);
+  $("sec179-deduction").textContent = fmtFull(r.sec179Deduction);
+  $("sec179-savings").textContent = fmtFull(r.sec179Savings);
+  $("consumable-savings").textContent =
+    "At " + inputs.txWeek + " treatments/week, $0 consumables vs a $" + r.competitorCost + "/tx competitor saves " + fmtFull(r.annualConsumableSavings) + "/year — " + fmtFull(r.annualConsumableSavings * 5) + " over 5 years.";
+
+  if (chart) chart.destroy();
+  chart = new Chart($("chart").getContext("2d"), {
+    type: "bar",
+    data: { labels: r.chart.labels, datasets: [
+      { label: "Cumulative revenue", data: r.chart.cumRevenue, backgroundColor: "#85B7EB", borderRadius: 4 },
+      { label: "Cumulative profit", data: r.chart.cumProfit, backgroundColor: "#5DCAA5", borderRadius: 4 },
+      { label: "Cumulative cost", data: r.chart.cumCost, backgroundColor: "#F09595", borderRadius: 4 },
+    ]},
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { font: { size: 11 }, boxWidth: 10, padding: 12, color: '#888' }
-        }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 10, padding: 12, color: "#888" } } },
       scales: {
-        y: {
-          ticks: {
-            color: '#888', font: { size: 10 },
-            callback: v => v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M' : '$' + (v/1000).toFixed(0) + 'K'
-          },
-          grid: { color: 'rgba(0,0,0,0.06)' }
-        },
-        x: {
-          ticks: { color: '#888', font: { size: 11 } },
-          grid: { display: false }
-        }
+        y: { ticks: { color: "#888", font: { size: 10 },
+          callback: v => v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K" },
+          grid: { color: "rgba(0,0,0,0.06)" } },
+        x: { ticks: { color: "#888", font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
 }
 
-$('device').addEventListener('change', function() {
+$("device").addEventListener("change", function() {
   const d = deviceDefaults[this.value];
-  if (this.value !== 'custom') {
-    $('price').value = d.price;
-    $('tx-price').value = d.txPrice;
+  if (this.value !== "custom") {
+    $("price").value = d.price;
+    $("tx-price").value = d.txPrice;
   }
   calculate();
 });
-
-['price','rate','consumable','tx-price','tx-week','staff-cost'].forEach(id => {
-  $(id).addEventListener('input', calculate);
-});
-
-['term','tax-bracket'].forEach(id => {
-  $(id).addEventListener('change', calculate);
-});
-
+["price","rate","consumable","tx-price","tx-week","staff-cost"].forEach(id => $(id).addEventListener("input", calculate));
+["term","tax-bracket"].forEach(id => $(id).addEventListener("change", calculate));
 calculate();
+
+// ============================================================
+// PDF EXPORT
+// ============================================================
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function formatDate() {
+  return new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+function safe(val, fallback) {
+  const v = (val || "").trim();
+  return v || fallback;
+}
+
+function buildCoverPage(inputs, results, practice) {
+  const deviceName = deviceDefaults[inputs.deviceKey]?.name || "Custom configuration";
+  const deviceShortName = deviceName.split(" — ")[0];
+  return `
+    <div class="pdf-page" id="pdf-page-1">
+      <div class="pdf-cover-header">
+        <div class="pdf-cover-brand">
+          <img class="lion" src="${LION_LOGO}" alt="Rohrer" />
+          <img class="wordmark" src="${WORDMARK_LOGO}" alt="Rohrer Aesthetics" />
+        </div>
+        <div class="pdf-cover-date">Prepared ${escapeHtml(formatDate())}</div>
+      </div>
+
+      <div class="pdf-cover-eyebrow">Device Investment Analysis</div>
+      <div class="pdf-cover-title">Your Path to ROI<br/>with ${escapeHtml(deviceShortName)}</div>
+      <div class="pdf-cover-subtitle">
+        A personalized financial projection showing the revenue, profit, and tax advantages of adding this Rohrer Aesthetics device to your practice.
+      </div>
+
+      <div class="pdf-cover-prepared">
+        <div class="pdf-prepared-title">Prepared exclusively for</div>
+        <div class="pdf-prepared-practice">${escapeHtml(safe(practice.practiceName, "Your Practice"))}</div>
+        <div class="pdf-prepared-doctor">${escapeHtml(safe(practice.doctorName, "Doctor"))}</div>
+      </div>
+
+      <div class="pdf-cover-summary">
+        <div class="pdf-summary-card">
+          <div class="pdf-summary-label">Projected monthly profit</div>
+          <div class="pdf-summary-value">${fmt(results.monthlyProfit)}</div>
+        </div>
+        <div class="pdf-summary-card alt">
+          <div class="pdf-summary-label">Breakeven in</div>
+          <div class="pdf-summary-value">${results.monthsToBreakeven < 999 ? results.monthsToBreakeven.toFixed(1) + " mo" : "N/A"}</div>
+        </div>
+        <div class="pdf-summary-card alt">
+          <div class="pdf-summary-label">Year 1 net profit</div>
+          <div class="pdf-summary-value">${fmt(results.year1Profit)}</div>
+        </div>
+        <div class="pdf-summary-card">
+          <div class="pdf-summary-label">Year 1 tax savings</div>
+          <div class="pdf-summary-value">${fmt(results.sec179Savings)}</div>
+        </div>
+      </div>
+
+      <div class="pdf-cover-rep">
+        <div>
+          <div class="pdf-rep-block-label">Your Rohrer Aesthetics representative</div>
+          <div class="pdf-rep-name">${escapeHtml(safe(practice.repName, "Your Rep"))}</div>
+          <div class="pdf-rep-contact">
+            ${practice.repPhone ? escapeHtml(practice.repPhone) + "<br/>" : ""}
+            ${practice.repEmail ? escapeHtml(practice.repEmail) : ""}
+          </div>
+        </div>
+        <div>
+          <div class="pdf-rep-block-label">Next steps</div>
+          <div class="pdf-rep-tagline">Let's discuss financing options, training, and a delivery timeline that fits your practice.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildResultsPage(inputs, results) {
+  const deviceName = deviceDefaults[inputs.deviceKey]?.name || "Custom configuration";
+  return `
+    <div class="pdf-page" id="pdf-page-2">
+      <div class="pdf-results-header">
+        <div class="pdf-results-title-block">
+          <div class="pdf-results-eyebrow">ROI Analysis</div>
+          <div class="pdf-results-title">Financial Projections</div>
+        </div>
+        <div class="pdf-results-brand">
+          <img class="lion" src="${LION_LOGO}" alt="Rohrer" />
+          <img class="wordmark" src="${WORDMARK_LOGO}" alt="Rohrer Aesthetics" />
+        </div>
+      </div>
+
+      <div class="pdf-section-title">Key Metrics</div>
+      <div class="pdf-metrics-grid">
+        <div class="pdf-metric highlight">
+          <div class="pdf-metric-label">Monthly revenue</div>
+          <div class="pdf-metric-value">${fmt(results.monthlyRevenue)}</div>
+        </div>
+        <div class="pdf-metric highlight">
+          <div class="pdf-metric-label">Monthly profit</div>
+          <div class="pdf-metric-value">${fmt(results.monthlyProfit)}</div>
+        </div>
+        <div class="pdf-metric">
+          <div class="pdf-metric-label">Breakeven</div>
+          <div class="pdf-metric-value">${results.monthsToBreakeven < 999 ? results.monthsToBreakeven.toFixed(1) + " mo" : "N/A"}</div>
+        </div>
+        <div class="pdf-metric">
+          <div class="pdf-metric-label">Year 1 net profit</div>
+          <div class="pdf-metric-value">${fmt(results.year1Profit)}</div>
+        </div>
+      </div>
+
+      <div class="pdf-two-col" style="margin-top: 14px;">
+        <div>
+          <div class="pdf-section-title">Device &amp; Financing</div>
+          <table class="pdf-inputs-table">
+            <tr><td>Device</td><td>${escapeHtml(deviceName)}</td></tr>
+            <tr><td>Device price</td><td>${fmtFull(inputs.price)}</td></tr>
+            <tr><td>Loan term</td><td>${inputs.months} months</td></tr>
+            <tr><td>Interest rate</td><td>${inputs.rateRaw.toFixed(1)}%</td></tr>
+            <tr><td>Monthly payment</td><td>${fmtFull(results.monthlyPayment)}</td></tr>
+            <tr><td>Consumable / treatment</td><td>$${inputs.consumable}</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="pdf-section-title">Treatment Revenue</div>
+          <table class="pdf-inputs-table">
+            <tr><td>Price per treatment</td><td>${fmtFull(inputs.txPrice)}</td></tr>
+            <tr><td>Treatments per week</td><td>${inputs.txWeek}</td></tr>
+            <tr><td>Staff cost / treatment</td><td>${fmtFull(inputs.staffCost)}</td></tr>
+            <tr><td>Treatments per month</td><td>${results.txPerMonth.toFixed(1)}</td></tr>
+            <tr><td>Annual treatments</td><td>${(inputs.txWeek * 52).toLocaleString()}</td></tr>
+            <tr><td>Annual revenue</td><td>${fmtFull(results.monthlyRevenue * 12)}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="pdf-section-title">Section 179 Tax Benefit (Bracket: ${(inputs.taxRate * 100).toFixed(0)}%)</div>
+      <div class="pdf-tax-grid">
+        <div class="pdf-tax-box">
+          <div class="pdf-tax-label">Section 179 deduction</div>
+          <div class="pdf-tax-value">${fmtFull(results.sec179Deduction)}</div>
+        </div>
+        <div class="pdf-tax-box">
+          <div class="pdf-tax-label">Year 1 tax savings</div>
+          <div class="pdf-tax-value">${fmtFull(results.sec179Savings)}</div>
+        </div>
+      </div>
+
+      <div class="pdf-advantage">
+        <div class="pdf-adv-title">Rohrer no-consumables advantage</div>
+        <div class="pdf-adv-text">At ${inputs.txWeek} treatments/week, $0 consumables vs a $${results.competitorCost}/tx competitor saves ${fmtFull(results.annualConsumableSavings)}/year — ${fmtFull(results.annualConsumableSavings * 5)} over 5 years.</div>
+      </div>
+
+      <div class="pdf-section-title">5-Year Cumulative Projection</div>
+      <div class="pdf-chart-wrap">
+        <canvas id="pdf-chart"></canvas>
+      </div>
+
+      <div class="pdf-disclaimer">
+        <strong>Estimates only.</strong> Actual results vary by practice volume, market conditions, payor mix, and tax circumstances.
+        Section 179 calculations are illustrative; consult your tax advisor for guidance specific to your practice.<br/>
+        Rohrer Aesthetics ROI Calculator — Powered by 3AM Solutions
+      </div>
+    </div>
+  `;
+}
+
+async function renderPdfChart(chartData) {
+  return new Promise(resolve => {
+    const ctx = document.getElementById("pdf-chart").getContext("2d");
+    let resolved = false;
+    const done = (c) => { if (!resolved) { resolved = true; resolve(c); } };
+    const c = new Chart(ctx, {
+      type: "bar",
+      data: { labels: chartData.labels, datasets: [
+        { label: "Cumulative revenue", data: chartData.cumRevenue, backgroundColor: "#85B7EB", borderRadius: 4 },
+        { label: "Cumulative profit", data: chartData.cumProfit, backgroundColor: "#5DCAA5", borderRadius: 4 },
+        { label: "Cumulative cost", data: chartData.cumCost, backgroundColor: "#F09595", borderRadius: 4 },
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { onComplete: () => done(c) },
+        plugins: { legend: { position: "bottom", labels: { font: { size: 12 }, boxWidth: 12, padding: 14, color: "#555" } } },
+        scales: {
+          y: { ticks: { color: "#666", font: { size: 11 },
+            callback: v => v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K" },
+            grid: { color: "rgba(0,0,0,0.06)" } },
+          x: { ticks: { color: "#666", font: { size: 12 } }, grid: { display: false } }
+        }
+      }
+    });
+    setTimeout(() => done(c), 800);
+  });
+}
+
+async function exportPdf() {
+  const btn = $("export-btn");
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating PDF…';
+
+  try {
+    const inputs = getInputs();
+    const results = compute(inputs);
+    const practice = {
+      practiceName: $("practice-name").value,
+      doctorName: $("doctor-name").value,
+      repName: $("rep-name").value,
+      repPhone: $("rep-phone").value,
+      repEmail: $("rep-email").value,
+    };
+
+    const renderArea = $("pdf-render-area");
+    renderArea.innerHTML = buildCoverPage(inputs, results, practice) + buildResultsPage(inputs, results);
+
+    // Wait for embedded logo images to be ready
+    const imgs = renderArea.querySelectorAll("img");
+    await Promise.all(Array.from(imgs).map(img => {
+      if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+      return new Promise(res => { img.onload = res; img.onerror = res; });
+    }));
+
+    await renderPdfChart(results.chart);
+    await new Promise(r => setTimeout(r, 200));
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const pages = [$("pdf-page-1"), $("pdf-page-2")];
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], {
+        scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgRatio = canvas.width / canvas.height;
+      const pageRatio = pageWidth / pageHeight;
+      let renderWidth, renderHeight;
+      if (imgRatio > pageRatio) {
+        renderWidth = pageWidth;
+        renderHeight = pageWidth / imgRatio;
+      } else {
+        renderHeight = pageHeight;
+        renderWidth = pageHeight * imgRatio;
+      }
+      const offsetX = (pageWidth - renderWidth) / 2;
+      const offsetY = (pageHeight - renderHeight) / 2;
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, "JPEG", offsetX, offsetY, renderWidth, renderHeight);
+    }
+
+    const practiceSlug = (practice.practiceName || "practice").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "practice";
+    const dateSlug = new Date().toISOString().slice(0, 10);
+    pdf.save("Rohrer-ROI-" + practiceSlug + "-" + dateSlug + ".pdf");
+  } catch (err) {
+    console.error("PDF export failed:", err);
+    alert("Sorry — PDF export failed. Check the console for details.");
+  } finally {
+    $("pdf-render-area").innerHTML = "";
+    btn.disabled = false;
+    btn.innerHTML = originalLabel;
+  }
+}
+
+$("export-btn").addEventListener("click", exportPdf);
 </script>
 </body>
 </html>
