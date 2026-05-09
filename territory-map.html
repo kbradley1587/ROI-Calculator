@@ -251,8 +251,8 @@ function loadSheetData() {
                     device: row[colMap['Recommended_Lead_Device']] || 'None',
                     avoidance: row[colMap['Competitive_Avoidance']] || '',
                     talkTrack: row[colMap['Talk_Track_Summary']] || '',
-                    lat: null,
-                    lng: null
+                    lat: parseFloat(row[colMap['Latitude']]) || null,
+                    lng: parseFloat(row[colMap['Longitude']]) || null
                 };
 
                 allPractices.push(practice);
@@ -321,16 +321,44 @@ function changeMarket() {
 
 function geocodeAndDisplay() {
     var geocoder = new google.maps.Geocoder();
-    var pending = visiblePractices.length;
+    var needsGeocode = [];
     var displayed = 0;
 
-    if (pending === 0) {
+    if (visiblePractices.length === 0) {
         document.getElementById('loading').style.display = 'none';
         return;
     }
 
-    visiblePractices.forEach(function(p, idx) {
-        // Build geocode query from available address info
+    // First pass: display practices that already have coordinates
+    visiblePractices.forEach(function(p) {
+        if (p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) {
+            createMarker(p);
+            displayed++;
+        } else {
+            needsGeocode.push(p);
+        }
+    });
+
+    console.log('Displayed ' + displayed + ' practices from coordinates');
+    console.log('Need geocoding: ' + needsGeocode.length);
+
+    // Fit map to show all markers placed so far
+    if (markers.length > 0) {
+        var bounds = new google.maps.LatLngBounds();
+        markers.forEach(function(m) { bounds.extend(m.getPosition()); });
+        map.fitBounds(bounds, 60);
+    }
+
+    // If nothing needs geocoding, we're done
+    if (needsGeocode.length === 0) {
+        document.getElementById('loading').style.display = 'none';
+        updateFilterCounts();
+        return;
+    }
+
+    // Second pass: geocode practices without coordinates
+    var pending = needsGeocode.length;
+    needsGeocode.forEach(function(p, idx) {
         var query = '';
         if (p.address && p.address.length > 5 && p.address !== p.city + ', ' + p.state) {
             query = p.address;
