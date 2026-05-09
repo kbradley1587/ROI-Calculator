@@ -140,7 +140,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f5f3ef; }
 // Google Sheet configuration
 var SHEET_ID = '1jCi-rpfjYwHMI-s8t4bK-1UUJ5KARd7NPIV4nFsrPoM';
 var SHEET_NAME = 'Practices';
-var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(SHEET_NAME);
+var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
 
 var allPractices = [];
 var visiblePractices = [];
@@ -155,123 +155,111 @@ var currentMarket = 'all';
 var urlParams = new URLSearchParams(window.location.search);
 var urlMarket = urlParams.get('market');
 
-// Column mapping - adjust these if your column order changes
-// These are the column indices (0-based) in your Google Sheet
-var COL = {
-    PRACTICE_ID: 0,
-    PRACTICE_NAME: 1,
-    MARKET_MSA: 2,
-    STATE: 3,
-    CITY: 4,
-    ADDRESS: 5,
-    WEBSITE: 6,
-    URL: 7,
-    PHONE: 8,
-    PRACTICE_TYPE: 9,
-    PRACTICE_SEGMENT: 10,
-    YEAR_ESTABLISHED: 11,
-    LOCATION_COUNT: 12,
-    IS_CHAIN: 13,
-    PROVIDER_COUNT: 14,
-    GOOGLE_RATING: 15,
-    GOOGLE_REVIEWS: 16,
-    OPPORTUNITY_SCORE: 17,
-    PRIORITY_TIER: 18,
-    RECOMMENDED_DEVICE: 19,
-    COMPETITIVE_AVOIDANCE: 20,
-    TALK_TRACK: 21
-};
+function parseCSV(text) {
+    var lines = [];
+    var current = '';
+    var inQuotes = false;
+    var row = [];
+
+    for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (ch === '"') {
+            if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === ',' && !inQuotes) {
+            row.push(current.trim());
+            current = '';
+        } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+            if (current || row.length > 0) {
+                row.push(current.trim());
+                lines.push(row);
+                row = [];
+                current = '';
+            }
+            if (ch === '\r' && i + 1 < text.length && text[i + 1] === '\n') i++;
+        } else {
+            current += ch;
+        }
+    }
+    if (current || row.length > 0) {
+        row.push(current.trim());
+        lines.push(row);
+    }
+    return lines;
+}
 
 function loadSheetData() {
     fetch(SHEET_URL)
         .then(function(response) { return response.text(); })
         .then(function(text) {
-            // Google Sheets returns JSONP-like format, strip the wrapper
-            var json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
-            var rows = json.table.rows;
-            var cols = json.table.cols;
-
-            console.log('Loaded ' + rows.length + ' rows from Google Sheets');
-            console.log('Columns: ' + cols.map(function(c) { return c.label; }).join(', '));
-
-            // Find column indices by header name
-            var colMap = {};
-            cols.forEach(function(c, i) {
-                if (c.label) colMap[c.label.trim()] = i;
-            });
-
-            console.log('Column map:', JSON.stringify(colMap));
-
-            // Override COL with actual column positions if found
-            if (colMap['Practice_ID'] !== undefined) COL.PRACTICE_ID = colMap['Practice_ID'];
-            if (colMap['Practice_Name'] !== undefined) COL.PRACTICE_NAME = colMap['Practice_Name'];
-            if (colMap['Market_MSA'] !== undefined) COL.MARKET_MSA = colMap['Market_MSA'];
-            if (colMap['State'] !== undefined) COL.STATE = colMap['State'];
-            if (colMap['City'] !== undefined) COL.CITY = colMap['City'];
-            if (colMap['Address'] !== undefined) COL.ADDRESS = colMap['Address'];
-            if (colMap['Website'] !== undefined) COL.WEBSITE = colMap['Website'];
-            if (colMap['Phone'] !== undefined) COL.PHONE = colMap['Phone'];
-            if (colMap['Practice_Type'] !== undefined) COL.PRACTICE_TYPE = colMap['Practice_Type'];
-            if (colMap['Practice_Segment'] !== undefined) COL.PRACTICE_SEGMENT = colMap['Practice_Segment'];
-            if (colMap['Opportunity_Score'] !== undefined) COL.OPPORTUNITY_SCORE = colMap['Opportunity_Score'];
-            if (colMap['Priority_Tier'] !== undefined) COL.PRIORITY_TIER = colMap['Priority_Tier'];
-            if (colMap['Recommended_Lead_Device'] !== undefined) COL.RECOMMENDED_DEVICE = colMap['Recommended_Lead_Device'];
-            if (colMap['Competitive_Avoidance'] !== undefined) COL.COMPETITIVE_AVOIDANCE = colMap['Competitive_Avoidance'];
-            if (colMap['Talk_Track_Summary'] !== undefined) COL.TALK_TRACK = colMap['Talk_Track_Summary'];
-            if (colMap['Lead_Temperature'] !== undefined) COL.LEAD_TEMP = colMap['Lead_Temperature'];
-
-            function getVal(row, colIdx) {
-                if (!row.c || !row.c[colIdx]) return '';
-                return row.c[colIdx].v || '';
+            var rows = parseCSV(text);
+            if (rows.length < 2) {
+                document.getElementById('loading').textContent = 'No data found. Check sheet sharing settings.';
+                return;
             }
+
+            var headers = rows[0];
+            console.log('Headers:', headers);
+            console.log('Total rows:', rows.length - 1);
+
+            // Build column index from headers
+            var colMap = {};
+            headers.forEach(function(h, i) { colMap[h.replace(/"/g, '').trim()] = i; });
+            console.log('Column map:', JSON.stringify(colMap));
 
             var markets = new Set();
 
-            rows.forEach(function(row) {
-                var practiceId = getVal(row, COL.PRACTICE_ID);
-                if (!practiceId) return;
+            for (var r = 1; r < rows.length; r++) {
+                var row = rows[r];
+                if (!row || row.length < 5) continue;
 
-                var score = parseInt(getVal(row, COL.OPPORTUNITY_SCORE)) || 0;
+                var practiceId = row[colMap['Practice_ID']] || '';
+                if (!practiceId) continue;
+
+                var score = parseInt(row[colMap['Opportunity_Score']]) || 0;
+                var leadTemp = (row[colMap['Lead_Temperature']] || '').toLowerCase();
                 var temp = 'cold';
-                if (COL.LEAD_TEMP !== undefined) {
-                    var lt = String(getVal(row, COL.LEAD_TEMP)).toLowerCase();
-                    if (lt === 'hot') temp = 'hot';
-                    else if (lt === 'warm') temp = 'warm';
-                    else temp = 'cold';
-                } else {
-                    if (score >= 76) temp = 'hot';
-                    else if (score >= 51) temp = 'warm';
-                }
+                if (leadTemp === 'hot') temp = 'hot';
+                else if (leadTemp === 'warm') temp = 'warm';
+                else if (score >= 76) temp = 'hot';
+                else if (score >= 51) temp = 'warm';
 
-                var market = String(getVal(row, COL.MARKET_MSA));
-                var city = String(getVal(row, COL.CITY));
-                var address = String(getVal(row, COL.ADDRESS));
-                var state = String(getVal(row, COL.STATE));
+                var market = row[colMap['Market_MSA']] || '';
+                var city = row[colMap['City']] || '';
+                var state = row[colMap['State']] || '';
+                var address = row[colMap['Address']] || '';
 
                 if (market) markets.add(market);
 
                 var practice = {
-                    id: String(practiceId),
-                    name: String(getVal(row, COL.PRACTICE_NAME)),
+                    id: practiceId,
+                    name: row[colMap['Practice_Name']] || '',
                     market: market,
                     state: state,
                     city: city,
-                    address: address || city + ', ' + state,
-                    website: String(getVal(row, COL.WEBSITE)),
-                    phone: String(getVal(row, COL.PHONE)),
-                    type: String(getVal(row, COL.PRACTICE_TYPE)),
-                    segment: String(getVal(row, COL.PRACTICE_SEGMENT)),
+                    address: address || (city + ', ' + state),
+                    website: row[colMap['Website']] || '',
+                    phone: row[colMap['Phone']] || '',
+                    type: row[colMap['Practice_Type']] || '',
+                    segment: row[colMap['Practice_Segment']] || '',
                     score: score,
                     temp: temp,
-                    device: String(getVal(row, COL.RECOMMENDED_DEVICE)) || 'None',
-                    avoidance: String(getVal(row, COL.COMPETITIVE_AVOIDANCE)),
-                    talkTrack: String(getVal(row, COL.TALK_TRACK)),
+                    device: row[colMap['Recommended_Lead_Device']] || 'None',
+                    avoidance: row[colMap['Competitive_Avoidance']] || '',
+                    talkTrack: row[colMap['Talk_Track_Summary']] || '',
                     lat: null,
                     lng: null
                 };
 
                 allPractices.push(practice);
-            });
+            }
+
+            console.log('Loaded ' + allPractices.length + ' practices');
+            console.log('Markets found:', Array.from(markets));
 
             // Populate market dropdown
             var select = document.getElementById('market-select');
@@ -297,10 +285,7 @@ function loadSheetData() {
             document.getElementById('market-label').textContent =
                 currentMarket === 'all' ? 'All Markets' : currentMarket;
 
-            // Filter practices by current market
             filterPracticesByMarket();
-
-            // Geocode and display
             geocodeAndDisplay();
         })
         .catch(function(err) {
