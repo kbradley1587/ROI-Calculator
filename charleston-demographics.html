@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Charleston, SC Market Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #F5F3EF; color: #1a1a1a; padding: 0; }
+
+.header { background: linear-gradient(135deg, #1B3A5C 0%, #2C5F8A 100%); padding: 24px 20px; text-align: center; }
+.header h1 { font-family: 'Playfair Display', serif; font-size: 22px; color: #fff; letter-spacing: 0.5px; }
+.header .sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+.header .market-tag { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 4px 14px; font-size: 11px; color: rgba(255,255,255,0.9); margin-top: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+.section { padding: 16px; }
+.section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8A7E72; font-weight: 600; margin-bottom: 12px; }
+
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.kpi { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #E8E3DC; }
+.kpi .number { font-size: 26px; font-weight: 700; color: #1B3A5C; line-height: 1.1; }
+.kpi .label { font-size: 11px; color: #8A7E72; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi.wide { grid-column: span 2; display: flex; justify-content: space-between; align-items: center; }
+.kpi.wide .number { font-size: 22px; }
+.kpi.accent { background: #1B3A5C; }
+.kpi.accent .number { color: #E8D5B5; }
+.kpi.accent .label { color: rgba(255,255,255,0.6); }
+
+.card { background: #fff; border-radius: 14px; padding: 20px; border: 1px solid #E8E3DC; margin-bottom: 14px; }
+.card-title { font-size: 15px; font-weight: 700; color: #1B3A5C; margin-bottom: 14px; }
+.card-subtitle { font-size: 12px; color: #8A7E72; margin-top: -10px; margin-bottom: 14px; }
+
+.chart-container { position: relative; height: 220px; }
+.chart-container.tall { height: 280px; }
+
+.demand-row { display: flex; align-items: center; margin-bottom: 10px; }
+.demand-label { font-size: 12px; min-width: 130px; color: #555; font-weight: 500; }
+.demand-bar-track { flex: 1; height: 24px; background: #F0ECE6; border-radius: 6px; overflow: hidden; position: relative; }
+.demand-bar { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 10px; font-weight: 700; color: #fff; transition: width 0.8s ease-out; }
+.demand-index { font-size: 12px; font-weight: 700; min-width: 35px; text-align: right; margin-left: 8px; color: #1B3A5C; }
+
+.insight-box { background: #F8F5F0; border-left: 3px solid #C9A96E; border-radius: 0 10px 10px 0; padding: 14px; margin-bottom: 10px; }
+.insight-box .tag { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #C9A96E; font-weight: 700; margin-bottom: 4px; }
+.insight-box p { font-size: 13px; color: #333; line-height: 1.5; }
+
+.gap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gap-item { background: #F8F5F0; border-radius: 10px; padding: 12px; text-align: center; }
+.gap-item .device { font-size: 13px; font-weight: 700; color: #1B3A5C; }
+.gap-item .count { font-size: 22px; font-weight: 700; color: #C9A96E; margin: 4px 0; }
+.gap-item .of { font-size: 11px; color: #8A7E72; }
+
+.comp-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #F0ECE6; }
+.comp-row:last-child { border-bottom: none; }
+.comp-name { font-size: 13px; font-weight: 600; color: #333; }
+.comp-count { font-size: 12px; color: #8A7E72; }
+.comp-bar { width: 80px; height: 6px; background: #F0ECE6; border-radius: 3px; overflow: hidden; }
+.comp-fill { height: 100%; background: #1B3A5C; border-radius: 3px; }
+
+.demo-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F0ECE6; }
+.demo-row:last-child { border-bottom: none; }
+.demo-label { font-size: 13px; color: #555; }
+.demo-value { font-size: 13px; font-weight: 700; color: #1B3A5C; }
+
+.footer { text-align: center; font-size: 11px; color: #B0A899; padding: 20px 16px; }
+
+.trend-up { color: #2D8A56; font-size: 11px; font-weight: 600; }
+.trend-neutral { color: #C9A96E; font-size: 11px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Market Intelligence Brief</h1>
+    <div class="sub">Rohrer Aesthetics Sales Intelligence</div>
+    <div class="market-tag">Charleston, SC MSA</div>
+</div>
+
+<div class="section">
+    <div class="section-title">Market Overview</div>
+    <div class="kpi-grid">
+        <div class="kpi accent">
+            <div class="number">870K</div>
+            <div class="label">MSA Population</div>
+        </div>
+        <div class="kpi accent">
+            <div class="number">$92,414</div>
+            <div class="label">Median HH Income</div>
+        </div>
+        <div class="kpi">
+            <div class="number">36.6</div>
+            <div class="label">Median Age</div>
+        </div>
+        <div class="kpi">
+            <div class="number">3x</div>
+            <div class="label">Growth vs US Avg</div>
+        </div>
+        <div class="kpi">
+            <div class="number">57%</div>
+            <div class="label">College Educated</div>
+        </div>
+        <div class="kpi">
+            <div class="number">52.5%</div>
+            <div class="label">Female Population</div>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Why Charleston Is a Prime Aesthetics Market</div>
+    <div class="insight-box">
+        <div class="tag">Income</div>
+        <p>Median household income of $92,414 is 35% above the national median. The 45-64 age cohort earns $111,555 median, the peak spending demographic for aesthetic treatments. The $200K+ income bracket is the largest household segment in Charleston.</p>
+    </div>
+    <div class="insight-box">
+        <div class="tag">Demographics</div>
+        <p>Population growing 3x faster than the US average, driven by affluent relocations. Median age of 36.6 means a large cohort of professionals entering peak aesthetic spending years (35-55). 52.5% female population aligns with primary medspa patient base.</p>
+    </div>
+    <div class="insight-box">
+        <div class="tag">Climate</div>
+        <p>Year-round sun exposure in a coastal market drives high demand for pigment correction, sun damage treatment, and skin rejuvenation. Outdoor lifestyle culture increases patient awareness of skin aging and creates recurring treatment demand.</p>
+    </div>
+    <div class="insight-box">
+        <div class="tag">Competition Density</div>
+        <p>15 aesthetic practices scanned in the metro area. Dense competition signals strong patient demand. Multiple practices adding new devices indicates an active technology investment market.</p>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Treatment Demand by Category</div>
+    <div class="card">
+        <div class="card-title">Relative Search Interest</div>
+        <div class="card-subtitle">Based on Google Trends and market research data for Charleston metro</div>
+
+        <div class="demand-row">
+            <div class="demand-label">RF Microneedling</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:92%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">92</div></div>
+            <div class="demand-index"><span class="trend-up">+15%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Laser Hair Removal</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:88%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">88</div></div>
+            <div class="demand-index"><span class="trend-up">+8%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Body Contouring</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:82%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">82</div></div>
+            <div class="demand-index"><span class="trend-neutral">+3%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Skin Tightening</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:78%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">78</div></div>
+            <div class="demand-index"><span class="trend-up">+12%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Pigment / Sun Damage</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:75%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">75</div></div>
+            <div class="demand-index"><span class="trend-up">+18%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Laser Resurfacing</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:70%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">70</div></div>
+            <div class="demand-index"><span class="trend-up">+10%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Tattoo Removal</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:65%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">65</div></div>
+            <div class="demand-index"><span class="trend-up">+22%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">CO2 Resurfacing</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:55%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">55</div></div>
+            <div class="demand-index"><span class="trend-neutral">+5%</span></div>
+        </div>
+        <div class="demand-row">
+            <div class="demand-label">Muscle Toning</div>
+            <div class="demand-bar-track"><div class="demand-bar" style="width:48%; background: linear-gradient(90deg, #1B3A5C, #2C7FB8);">48</div></div>
+            <div class="demand-index"><span class="trend-neutral">+2%</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Market Gaps: Rohrer Device Opportunities</div>
+    <div class="card">
+        <div class="card-title">Practices WITHOUT Key Capabilities</div>
+        <div class="card-subtitle">Out of 15 practices scanned in Charleston metro</div>
+        <div class="gap-grid">
+            <div class="gap-item">
+                <div class="device">PicoLazer</div>
+                <div class="count">10/15</div>
+                <div class="of">No pico capability</div>
+            </div>
+            <div class="gap-item">
+                <div class="device">PiXel8-RF</div>
+                <div class="count">9/15</div>
+                <div class="of">No RF microneedling</div>
+            </div>
+            <div class="gap-item">
+                <div class="device">Phoenix</div>
+                <div class="count">8/15</div>
+                <div class="of">No CO2 laser</div>
+            </div>
+            <div class="gap-item">
+                <div class="device">Spectrum</div>
+                <div class="count">3/15</div>
+                <div class="of">Multi-platform gap</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="insight-box">
+        <div class="tag">Key Insight</div>
+        <p>PicoLazer represents the widest gap in Charleston. In a Southern coastal market with year-round sun exposure, pigment correction and tattoo removal demand is high. 10 out of 15 practices have zero picosecond capability. Google Trends shows tattoo removal search interest up 22% year over year in the Charleston metro.</p>
+    </div>
+    <div class="insight-box">
+        <div class="tag">RF Microneedling Growth</div>
+        <p>The global RF microneedling market is projected to grow at 15% CAGR through 2033, reaching $500M+. Search interest peaked in late 2025 and continues to climb. 9 of 15 Charleston practices lack dedicated RF microneedling. PiXel8's 4 MHz frequency is the highest on the market. Consumer demand is outpacing practice capacity.</p>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Competitive Landscape</div>
+    <div class="card">
+        <div class="card-title">Competitor Brand Presence</div>
+        <div class="card-subtitle">Number of practices using each competitor brand</div>
+
+        <div class="comp-row">
+            <div class="comp-name">Sciton</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:100%"></div></div>
+            <div class="comp-count">5 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">InMode</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:80%"></div></div>
+            <div class="comp-count">4 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Candela</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:60%"></div></div>
+            <div class="comp-count">3 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Cutera</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:40%"></div></div>
+            <div class="comp-count">2 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Lumenis</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:40%"></div></div>
+            <div class="comp-count">2 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Lutronic</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:40%"></div></div>
+            <div class="comp-count">2 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">BTL</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:40%"></div></div>
+            <div class="comp-count">2 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Solta / Valeant</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:40%"></div></div>
+            <div class="comp-count">2 practices</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">Fotona</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:20%"></div></div>
+            <div class="comp-count">1 practice</div>
+        </div>
+        <div class="comp-row">
+            <div class="comp-name">DEKA</div>
+            <div class="comp-bar"><div class="comp-fill" style="width:20%"></div></div>
+            <div class="comp-count">1 practice</div>
+        </div>
+    </div>
+
+    <div class="insight-box">
+        <div class="tag">Competitive Strategy</div>
+        <p>Sciton-dominant market (5 practices). Sciton does NOT manufacture RF microneedling or pico devices. Every Sciton practice is a natural PiXel8 and PicoLazer target with zero vendor conflict. Lead with: "We complement your Sciton investment."</p>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Revenue Opportunity Estimate</div>
+    <div class="card">
+        <div class="card-title">Charleston Market Potential</div>
+
+        <div class="demo-row">
+            <div class="demo-label">PicoLazer opportunities (10 practices)</div>
+            <div class="demo-value">$1,000,000</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">PiXel8-RF opportunities (9 practices)</div>
+            <div class="demo-value">$603,000</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">Phoenix CO2 opportunities (8 practices)</div>
+            <div class="demo-value">$480,000</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">Spectrum opportunities (3 practices)</div>
+            <div class="demo-value">$240,000</div>
+        </div>
+        <div class="demo-row" style="border-top: 2px solid #1B3A5C; padding-top: 12px; margin-top: 4px;">
+            <div class="demo-label" style="font-weight:700; color:#1B3A5C;">Total addressable pipeline</div>
+            <div class="demo-value" style="font-size:18px; color:#C9A96E;">$2,323,000</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Highest-Value Targets</div>
+
+        <div class="demo-row">
+            <div class="demo-label">Germain Dermatology (4 locations)</div>
+            <div class="demo-value">$400K+ potential</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">CC Plastics / Skin Clinic</div>
+            <div class="demo-value">$167K potential</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">Laser Solutions Mt. Pleasant</div>
+            <div class="demo-value">$247K potential</div>
+        </div>
+        <div class="demo-row">
+            <div class="demo-label">Charleston Laser & Aesthetics</div>
+            <div class="demo-value">$227K potential</div>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Industry Growth Trends</div>
+    <div class="card">
+        <div class="card-title">Aesthetic Market Projections</div>
+        <div class="chart-container tall">
+            <canvas id="growthChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Market Demographics by Age</div>
+    <div class="card">
+        <div class="card-title">Median Household Income by Age Cohort</div>
+        <div class="card-subtitle">Charleston, SC (US Census ACS 2023)</div>
+        <div class="chart-container">
+            <canvas id="incomeChart"></canvas>
+        </div>
+    </div>
+
+    <div class="insight-box">
+        <div class="tag">Spending Power</div>
+        <p>The 45-64 age cohort in Charleston earns $111,555 median household income. This is the peak aesthetic treatment spending demographic. The 25-44 cohort at $98,325 represents the growth segment entering their aesthetic treatment years. Combined, these two cohorts represent the core medspa patient base with above-average disposable income.</p>
+    </div>
+</div>
+
+<div class="footer">
+    Charleston, SC Market Intelligence Brief<br>
+    Rohrer Aesthetics Sales Intelligence — Powered by 3AM Solutions<br>
+    Data sources: US Census ACS 2023, Google Trends, ASPS, industry reports<br>
+    Generated April 2026
+</div>
+
+<script>
+// Income by Age Chart
+const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+new Chart(incomeCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Under 25', '25-44', '45-64', '65+'],
+        datasets: [{
+            label: 'Median HH Income',
+            data: [42000, 98325, 111555, 68200],
+            backgroundColor: ['#C9A96E', '#1B3A5C', '#1B3A5C', '#8BA7C4'],
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                ticks: {
+                    callback: function(v) { return '$' + (v/1000).toFixed(0) + 'K'; },
+                    color: '#8A7E72', font: { size: 11, family: 'DM Sans' }
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: {
+                ticks: { color: '#8A7E72', font: { size: 11, family: 'DM Sans' } },
+                grid: { display: false }
+            }
+        }
+    }
+});
+
+// Growth Trends Chart
+const growthCtx = document.getElementById('growthChart').getContext('2d');
+new Chart(growthCtx, {
+    type: 'line',
+    data: {
+        labels: ['2024', '2025', '2026', '2027', '2028', '2029', '2030', '2031'],
+        datasets: [
+            {
+                label: 'RF Microneedling Market ($M)',
+                data: [385, 500, 575, 661, 760, 874, 1005, 1156],
+                borderColor: '#1B3A5C',
+                backgroundColor: 'rgba(27,58,92,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#1B3A5C'
+            },
+            {
+                label: 'Non-Surgical Skin Tightening ($B)',
+                data: [3.0, 3.6, 4.1, 4.7, 5.3, 6.0, 6.8, 7.8],
+                borderColor: '#C9A96E',
+                backgroundColor: 'rgba(201,169,110,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#C9A96E',
+                yAxisID: 'y1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { font: { size: 11, family: 'DM Sans' }, color: '#8A7E72', boxWidth: 12, padding: 16 }
+            }
+        },
+        scales: {
+            y: {
+                position: 'left',
+                ticks: {
+                    callback: function(v) { return '$' + v + 'M'; },
+                    color: '#1B3A5C', font: { size: 10, family: 'DM Sans' }
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                title: { display: true, text: 'RF Microneedling ($M)', color: '#1B3A5C', font: { size: 10 } }
+            },
+            y1: {
+                position: 'right',
+                ticks: {
+                    callback: function(v) { return '$' + v + 'B'; },
+                    color: '#C9A96E', font: { size: 10, family: 'DM Sans' }
+                },
+                grid: { display: false },
+                title: { display: true, text: 'Skin Tightening ($B)', color: '#C9A96E', font: { size: 10 } }
+            },
+            x: {
+                ticks: { color: '#8A7E72', font: { size: 11, family: 'DM Sans' } },
+                grid: { display: false }
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>
