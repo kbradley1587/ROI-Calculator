@@ -52,6 +52,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f5f3ef; }
 
 .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(245,243,239,0.9); display: flex; align-items: center; justify-content: center; z-index: 20; font-size: 14px; color: #1B3A5C; font-weight: 600; text-align: center; padding: 20px; line-height: 1.5; }
 
+/* Force Google's address-suggestion dropdown to sit above the map so it is clickable */
+.pac-container { z-index: 10000 !important; }
+
 .info-window { font-family: 'DM Sans', sans-serif; max-width: 260px; }
 .info-window .iw-name { font-size: 15px; font-weight: 700; color: #1B3A5C; margin: 0 0 3px; }
 .info-window .iw-detail { font-size: 11px; color: #555; margin: 1px 0; }
