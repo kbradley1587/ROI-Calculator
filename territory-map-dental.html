@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Territory Map</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: #f5f3ef; }
+
+.header { background: #1B3A5C; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 10; }
+.header h1 { font-size: 15px; font-weight: 600; }
+.header .market { font-size: 11px; opacity: 0.7; }
+.header-right { display: flex; gap: 8px; align-items: center; }
+.traffic-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer; }
+.traffic-toggle input { cursor: pointer; }
+
+.location-bar { background: #fff; padding: 8px 12px; display: flex; gap: 8px; border-bottom: 1px solid #e0e0e0; z-index: 10; position: relative; }
+.location-input { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+.location-input::placeholder { color: #aaa; }
+
+.filter-bar { position: absolute; top: 90px; left: 10px; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-chip { padding: 6px 12px; border-radius: 16px; background: #fff; border: 1px solid #ddd; font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.1); font-family: 'DM Sans', sans-serif; }
+.filter-chip.active { background: #1B3A5C; color: #fff; border-color: #1B3A5C; }
+
+#map { width: 100%; height: calc(100vh - 44px - 38px - 140px); min-height: 300px; }
+
+.legend { position: absolute; bottom: 150px; left: 10px; background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; font-size: 11px; }
+.legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.legend-row:last-child { margin-bottom: 0; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+.route-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e0e0e0; padding: 10px 16px; z-index: 10; }
+.route-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.route-title { font-size: 13px; font-weight: 700; color: #1B3A5C; }
+.route-info { font-size: 11px; color: #8A7E72; }
+.route-stops { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 26px; overflow-x: auto; }
+.route-chip { display: inline-flex; align-items: center; gap: 3px; background: #F0ECE6; border-radius: 14px; padding: 4px 10px; font-size: 10px; font-weight: 600; color: #333; white-space: nowrap; }
+.route-chip .num { background: #1B3A5C; color: #fff; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+.route-chip .remove { cursor: pointer; color: #999; font-size: 13px; margin-left: 2px; }
+.route-chip .remove:hover { color: #c00; }
+.route-buttons { display: flex; gap: 8px; }
+.btn { padding: 10px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.btn-primary { background: #1B3A5C; color: #fff; flex: 1; }
+.btn-primary:hover { background: #264d73; }
+.btn-secondary { background: #F0ECE6; color: #1B3A5C; }
+.btn-secondary:hover { background: #e4ddd3; }
+.btn-optimize { background: #2D8A56; color: #fff; }
+.btn-optimize:hover { background: #247548; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(245,243,239,0.9); display: flex; align-items: center; justify-content: center; z-index: 20; font-size: 14px; color: #1B3A5C; font-weight: 600; text-align: center; padding: 20px; line-height: 1.5; }
+
+.info-window { font-family: 'DM Sans', sans-serif; max-width: 260px; }
+.info-window .iw-name { font-size: 15px; font-weight: 700; color: #1B3A5C; margin: 0 0 3px; }
+.info-window .iw-detail { font-size: 11px; color: #555; margin: 1px 0; }
+.info-window .iw-score-row { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.info-window .iw-score { font-size: 22px; font-weight: 700; color: #1B3A5C; }
+.info-window .iw-score-label { font-size: 10px; color: #8A7E72; font-weight: 600; }
+.info-window .iw-temp { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+.iw-hot { background: #FDECEA; color: #C62828; }
+.iw-warm { background: #FFF3E0; color: #E65100; }
+.iw-cold { background: #E3F2FD; color: #1565C0; }
+.info-window .iw-device { display: inline-block; background: #1B3A5C; color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; margin: 4px 0; }
+.info-window .iw-btn { display: block; width: 100%; margin-top: 6px; padding: 8px; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; text-align: center; }
+.iw-add { background: #C9A96E; color: #fff; }
+.iw-add:hover { background: #b89555; }
+.iw-added { background: #8A7E72; color: #fff; }
+.iw-navigate { background: #2D8A56; color: #fff; margin-top: 4px; }
+.iw-navigate:hover { background: #247548; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Territory Map</h1>
+        <div class="market" id="market-label">Loading...</div>
+    </div>
+    <div class="header-right">
+        <label class="traffic-toggle">
+            <input type="checkbox" id="traffic-toggle" checked onchange="toggleTraffic()">
+            Live Traffic
+        </label>
+    </div>
+</div>
+
+<div class="location-bar">
+    <input type="text" class="location-input" id="start-location" placeholder="Start: Enter address or hotel" />
+    <input type="text" class="location-input" id="end-location" placeholder="End: Enter address (blank = return to start)" />
+</div>
+
+<div class="filter-bar" id="filter-bar">
+    <div class="filter-chip active" onclick="filterMap('all')">All</div>
+    <div class="filter-chip" onclick="filterMap('hot')">Hot</div>
+    <div class="filter-chip" onclick="filterMap('warm')">Warm</div>
+    <div class="filter-chip" onclick="filterMap('cold')">Monitor</div>
+</div>
+
+<div id="map"></div>
+<div class="loading-overlay" id="loading">Loading practice data...</div>
+
+<div class="legend">
+    <div class="legend-row"><div class="legend-dot" style="background:#C62828;"></div> Hot (76+)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#E65100;"></div> Warm (51-75)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#1565C0;"></div> Monitor (0-50)</div>
+</div>
+
+<div class="route-panel">
+    <div class="route-header">
+        <div class="route-title">Route Builder</div>
+        <div class="route-info" id="route-info">0 stops | 0 mi | 0 min</div>
+    </div>
+    <div class="route-stops" id="route-stops">
+        <span style="font-size:11px; color:#aaa;">Tap pins to add stops to your route</span>
+    </div>
+    <div class="route-buttons">
+        <button class="btn btn-secondary" onclick="clearRoute()">Clear</button>
+        <button class="btn btn-optimize" id="optimize-btn" onclick="optimizeRoute()" disabled>Optimize</button>
+        <button class="btn btn-primary" id="navigate-btn" onclick="launchNavigation()" disabled>Navigate</button>
+    </div>
+</div>
+
+<script>
+// ============================ CONFIG ======================================
+// Dental CBCT Leads sheet.
+var SHEET_ID = '1oLUDu2HM_laL-fKID9Ek_L3pFIaEVv7WYoSyoJvaC8M';
+
+// >>> CONFIRM THIS <<< The exact name of the TAB (bottom of the Google Sheet)
+// that holds the practice rows. If it is not "Leads", change the text below
+// to match the tab name exactly (spelling, spaces, and capitalization).
+var SHEET_NAME = 'Leads';
+
+var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
+
+// ---- ROW OWNERSHIP -------------------------------------------------------
+// Glide passes the signed-in rep's email as ?rep=their@email.com
+// A rep sees a practice only if their email matches Owner - Rep OR Admin Row
+// Owner. ADMIN_EMAIL is the dental admin who sees every row (this is the
+// gmail used in the Admin Row Owner column, NOT the solutionsfor3am address).
+var ADMIN_EMAIL = 'kbradley1587@gmail.com';
+var repEmail = (new URLSearchParams(window.location.search).get('rep') || '').trim().toLowerCase();
+
+function repCanSee(ownerRep, ownerAdmin) {
+    if (!repEmail) return false;                 // no rep identified = zero access
+    if (repEmail === ADMIN_EMAIL) return true;   // admin sees everything
+    var rep = (ownerRep || '').trim().toLowerCase();
+    var admin = (ownerAdmin || '').trim().toLowerCase();
+    return repEmail === rep || repEmail === admin;
+}
+// ==========================================================================
+
+var allPractices = [];
+var visiblePractices = [];
+var routeStops = [];
+var markers = [];
+var infoWindows = [];
+var map, trafficLayer, directionsService, directionsRenderer;
+var currentFilter = 'all';
+
+function parseCSV(text) {
+    var lines = [];
+    var current = '';
+    var inQuotes = false;
+    var row = [];
+    for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (ch === '"') {
+            if (inQuotes && i + 1 < text.length && text[i + 1] === '"') { current += '"'; i++; }
+            else { inQuotes = !inQuotes; }
+        } else if (ch === ',' && !inQuotes) {
+            row.push(current.trim()); current = '';
+        } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+            if (current || row.length > 0) { row.push(current.trim()); lines.push(row); row = []; current = ''; }
+            if (ch === '\r' && i + 1 < text.length && text[i + 1] === '\n') i++;
+        } else { current += ch; }
+    }
+    if (current || row.length > 0) { row.push(current.trim()); lines.push(row); }
+    return lines;
+}
+
+// Normalize a header so messy dental labels match reliably:
+// "Owner - Rep" -> "ownerrep", "🔒 Row ID" -> "rowid", "Final Score" -> "finalscore"
+function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+// Resolve the dental column positions. Exact match first, then a contains
+// fallback. Exact-first prevents "Product" from matching "Product Value".
+function resolveCols(headers) {
+    var normed = headers.map(norm);
+    function find() {
+        var cands = Array.prototype.slice.call(arguments);
+        for (var k = 0; k < cands.length; k++) {
+            var idx = normed.indexOf(cands[k]);
+            if (idx > -1) return idx;
+        }
+        for (var k2 = 0; k2 < cands.length; k2++) {
+            for (var i = 0; i < normed.length; i++) {
+                if (normed[i].indexOf(cands[k2]) > -1) return i;
+            }
+        }
+        return -1;
+    }
+    return {
+        id:         find('rowid'),
+        name:       find('practicename'),
+        score:      find('finalscore'),
+        temp:       find('leadquality'),
+        website:    find('websitelink', 'website'),
+        phone:      find('telephone', 'phone'),
+        address:    find('practiceaddress'),
+        city:       find('practicecity'),
+        state:      find('practicestate'),
+        lat:        find('latitude'),
+        lng:        find('longitude'),
+        product:    find('product'),
+        ownerRep:   find('ownerrep'),
+        ownerAdmin: find('adminrowowner')
+    };
+}
+
+function cell(row, idx) { return (idx > -1 && idx < row.length) ? row[idx] : ''; }
+
+function loadSheetData() {
+    if (!repEmail) {
+        document.getElementById('loading').innerHTML =
+            'No rep identified.<br>This map must be opened from inside the app so it knows who you are.';
+        document.getElementById('market-label').textContent = 'No rep';
+        return;
+    }
+
+    fetch(SHEET_URL)
+        .then(function(response) { return response.text(); })
+        .then(function(text) {
+            var rows = parseCSV(text);
+            if (rows.length < 2) {
+                document.getElementById('loading').textContent = 'No data found. Check the tab name and sheet sharing settings.';
+                return;
+            }
+
+            var headers = rows[0];
+            var COL = resolveCols(headers);
+            console.log('Resolved columns:', JSON.stringify(COL));
+
+            var skipped = 0;
+
+            for (var r = 1; r < rows.length; r++) {
+                var row = rows[r];
+                if (!row || row.length < 5) continue;
+
+                // ---- OWNERSHIP GATE ----
+                var ownerRep = cell(row, COL.ownerRep);
+                var ownerAdmin = cell(row, COL.ownerAdmin);
+                if (!repCanSee(ownerRep, ownerAdmin)) { skipped++; continue; }
+                // ------------------------
+
+                var name = cell(row, COL.name);
+                if (!name) continue;
+
+                var practiceId = cell(row, COL.id) || ('row-' + r);
+
+                var score = parseInt(cell(row, COL.score)) || 0;
+
+                // Lead Quality is free text ("🔥 Hot Lead", "Warm Lead - Advanced
+                // Procedures", etc.) so detect the word, then fall back to score.
+                var lq = cell(row, COL.temp).toLowerCase();
+                var temp = 'cold';
+                if (lq.indexOf('hot') > -1) temp = 'hot';
+                else if (lq.indexOf('warm') > -1) temp = 'warm';
+                else if (score >= 76) temp = 'hot';
+                else if (score >= 51) temp = 'warm';
+
+                var city = cell(row, COL.city);
+                var state = cell(row, COL.state);
+                var address = cell(row, COL.address);
+                var product = cell(row, COL.product) || 'CBCT';
+
+                var practice = {
+                    id: practiceId,
+                    name: name,
+                    city: city,
+                    state: state,
+                    address: address || ((city ? city + ', ' : '') + state),
+                    website: cell(row, COL.website),
+                    phone: cell(row, COL.phone),
+                    product: product,
+                    score: score,
+                    temp: temp,
+                    lat: parseFloat(cell(row, COL.lat)) || null,
+                    lng: parseFloat(cell(row, COL.lng)) || null
+                };
+
+                allPractices.push(practice);
+            }
+
+            console.log('Rep ' + repEmail + ' can see ' + allPractices.length + ' practices (' + skipped + ' hidden)');
+
+            if (allPractices.length === 0) {
+                document.getElementById('loading').innerHTML =
+                    'No practices assigned to your account yet.<br>Contact your admin to get a territory.';
+                document.getElementById('market-label').textContent = repEmail;
+                return;
+            }
+
+            visiblePractices = allPractices.slice();
+            document.getElementById('market-label').textContent =
+                'Your territory: ' + allPractices.length + ' practices';
+
+            geocodeAndDisplay();
+        })
+        .catch(function(err) {
+            console.error('Error loading sheet:', err);
+            document.getElementById('loading').textContent = 'Error loading data. Make sure the sheet is shared publicly.';
+        });
+}
+
+function geocodeAndDisplay() {
+    var geocoder = new google.maps.Geocoder();
+    var needsGeocode = [];
+    var displayed = 0;
+
+    if (visiblePractices.length === 0) {
+        document.getElementById('loading').style.display = 'none';
+        return;
+    }
+
+    visiblePractices.forEach(function(p) {
+        if (p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) {
+            createMarker(p); displayed++;
+        } else {
+            needsGeocode.push(p);
+        }
+    });
+
+    if (markers.length > 0) {
+        var bounds = new google.maps.LatLngBounds();
+        markers.forEach(function(m) { bounds.extend(m.getPosition()); });
+        map.fitBounds(bounds, 60);
+    }
+
+    if (needsGeocode.length === 0) {
+        document.getElementById('loading').style.display = 'none';
+        updateFilterCounts();
+        return;
+    }
+
+    var pending = needsGeocode.length;
+    needsGeocode.forEach(function(p, idx) {
+        var query = '';
+        if (p.address && p.address.length > 5 && p.address !== p.city + ', ' + p.state) {
+            query = p.address;
+        } else if (p.city && p.state) {
+            query = p.name + ', ' + p.city + ', ' + p.state;
+        } else {
+            query = p.name + ' ' + p.state;
+        }
+
+        setTimeout(function() {
+            geocoder.geocode({ address: query }, function(results, status) {
+                pending--;
+                if (status === 'OK' && results[0]) {
+                    p.lat = results[0].geometry.location.lat();
+                    p.lng = results[0].geometry.location.lng();
+                    createMarker(p); displayed++;
+                } else {
+                    console.warn('Geocode failed for ' + p.name + ': ' + status);
+                }
+                if (pending === 0) {
+                    document.getElementById('loading').style.display = 'none';
+                    if (markers.length > 0) {
+                        var bounds = new google.maps.LatLngBounds();
+                        markers.forEach(function(m) { bounds.extend(m.getPosition()); });
+                        map.fitBounds(bounds, 60);
+                    }
+                    updateFilterCounts();
+                }
+            });
+        }, idx * 200);
+    });
+}
+
+function updateFilterCounts() {
+    var hot = visiblePractices.filter(function(p) { return p.temp === 'hot'; }).length;
+    var warm = visiblePractices.filter(function(p) { return p.temp === 'warm'; }).length;
+    var cold = visiblePractices.filter(function(p) { return p.temp !== 'hot' && p.temp !== 'warm'; }).length;
+    var all = visiblePractices.length;
+
+    document.getElementById('filter-bar').innerHTML =
+        '<div class="filter-chip active" onclick="filterMap(\'all\')">All (' + all + ')</div>' +
+        '<div class="filter-chip" onclick="filterMap(\'hot\')">Hot (' + hot + ')</div>' +
+        '<div class="filter-chip" onclick="filterMap(\'warm\')">Warm (' + warm + ')</div>' +
+        '<div class="filter-chip" onclick="filterMap(\'cold\')">Monitor (' + cold + ')</div>';
+}
+
+function getColor(temp) {
+    if (temp === 'hot') return '#C62828';
+    if (temp === 'warm') return '#E65100';
+    return '#1565C0';
+}
+function getTempClass(temp) {
+    if (temp === 'hot') return 'iw-hot';
+    if (temp === 'warm') return 'iw-warm';
+    return 'iw-cold';
+}
+function getTempLabel(temp) {
+    if (temp === 'hot') return 'HOT';
+    if (temp === 'warm') return 'WARM';
+    return 'MONITOR';
+}
+
+function createMarker(p) {
+    if (!p.lat || !p.lng) return;
+    var color = getColor(p.temp);
+
+    var marker = new google.maps.Marker({
+        map: map,
+        position: { lat: p.lat, lng: p.lng },
+        title: p.name,
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 14, fillColor: color, fillOpacity: 1,
+            strokeColor: '#fff', strokeWeight: 3,
+            labelOrigin: new google.maps.Point(0, 0)
+        },
+        label: { text: String(p.score), color: '#fff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans' }
+    });
+
+    var isInRoute = routeStops.some(function(s) { return s.id === p.id; });
+
+    // Lean dental popup: name, address, product (CBCT), lead score, two actions.
+    var contentString = '<div class="info-window">' +
+        '<div class="iw-name">' + p.name + '</div>' +
+        '<div class="iw-detail">' + p.address + '</div>' +
+        '<div class="iw-device">' + p.product + '</div>' +
+        '<div class="iw-score-row">' +
+            '<div class="iw-score">' + p.score + '</div>' +
+            '<span class="iw-score-label">Lead Score</span>' +
+            '<span class="iw-temp ' + getTempClass(p.temp) + '">' + getTempLabel(p.temp) + '</span>' +
+        '</div>' +
+        '<button class="iw-btn ' + (isInRoute ? 'iw-added' : 'iw-add') + '" onclick="toggleRoute(\'' + p.id + '\')">' + (isInRoute ? 'Added to Route' : 'Add to Route') + '</button>' +
+        '<button class="iw-btn iw-navigate" onclick="navigateTo(' + p.lat + ',' + p.lng + ')">Navigate Here</button>' +
+        '</div>';
+
+    var infoWindow = new google.maps.InfoWindow({ content: contentString });
+
+    marker.addListener('click', function() {
+        infoWindows.forEach(function(iw) { iw.close(); });
+        infoWindow.open(map, marker);
+    });
+
+    marker.practiceData = p;
+    markers.push(marker);
+    infoWindows.push(infoWindow);
+}
+
+function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 39.0, lng: -77.0 },
+        zoom: 7,
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+        styles: [
+            { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] }
+        ]
+    });
+
+    trafficLayer = new google.maps.TrafficLayer();
+    trafficLayer.setMap(map);
+
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map, suppressMarkers: true,
+        polylineOptions: { strokeColor: '#1B3A5C', strokeWeight: 4, strokeOpacity: 0.8 }
+    });
+
+    var options = { componentRestrictions: { country: 'us' } };
+    new google.maps.places.Autocomplete(document.getElementById('start-location'), options);
+    new google.maps.places.Autocomplete(document.getElementById('end-location'), options);
+
+    loadSheetData();
+}
+
+function toggleTraffic() {
+    var checked = document.getElementById('traffic-toggle').checked;
+    trafficLayer.setMap(checked ? map : null);
+}
+
+function filterMap(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+    event.target.classList.add('active');
+    markers.forEach(function(m) {
+        var p = m.practiceData;
+        var show = (filter === 'all') ||
+                   (filter === 'hot' && p.temp === 'hot') ||
+                   (filter === 'warm' && p.temp === 'warm') ||
+                   (filter === 'cold' && p.temp !== 'hot' && p.temp !== 'warm');
+        m.setMap(show ? map : null);
+    });
+}
+
+function toggleRoute(practiceId) {
+    var exists = routeStops.findIndex(function(s) { return s.id === practiceId; });
+    if (exists > -1) {
+        routeStops.splice(exists, 1);
+    } else {
+        var p = visiblePractices.find(function(pr) { return pr.id === practiceId; });
+        if (p && routeStops.length < 10) routeStops.push(p);
+    }
+    updateRoutePanel();
+    infoWindows.forEach(function(iw) { iw.close(); });
+    if (routeStops.length >= 2) {
+        calculateRoute();
+    } else {
+        directionsRenderer.setDirections({ routes: [] });
+        document.getElementById('route-info').textContent = routeStops.length + ' stop' + (routeStops.length !== 1 ? 's' : '');
+    }
+}
+
+function updateRoutePanel() {
+    var stopsDiv = document.getElementById('route-stops');
+    var optimizeBtn = document.getElementById('optimize-btn');
+    var navigateBtn = document.getElementById('navigate-btn');
+    if (routeStops.length === 0) {
+        stopsDiv.innerHTML = '<span style="font-size:11px; color:#aaa;">Tap pins to add stops to your route</span>';
+        optimizeBtn.disabled = true; navigateBtn.disabled = true;
+    } else {
+        var html = '';
+        routeStops.forEach(function(s, i) {
+            html += '<div class="route-chip">' +
+                '<span class="num">' + (i + 1) + '</span>' +
+                s.name.substring(0, 18) +
+                '<span class="remove" onclick="event.stopPropagation(); toggleRoute(\'' + s.id + '\')">&times;</span>' +
+                '</div>';
+        });
+        stopsDiv.innerHTML = html;
+        optimizeBtn.disabled = routeStops.length < 3;
+        navigateBtn.disabled = routeStops.length < 2;
+    }
+}
+
+function calculateRoute() {
+    if (routeStops.length < 2) return;
+    var startInput = document.getElementById('start-location').value;
+    var endInput = document.getElementById('end-location').value;
+    var origin, destination, waypoints = [];
+    if (startInput) {
+        origin = startInput;
+        routeStops.forEach(function(s) { waypoints.push({ location: new google.maps.LatLng(s.lat, s.lng), stopover: true }); });
+        destination = endInput || startInput;
+    } else {
+        origin = new google.maps.LatLng(routeStops[0].lat, routeStops[0].lng);
+        destination = new google.maps.LatLng(routeStops[routeStops.length - 1].lat, routeStops[routeStops.length - 1].lng);
+        for (var i = 1; i < routeStops.length - 1; i++) {
+            waypoints.push({ location: new google.maps.LatLng(routeStops[i].lat, routeStops[i].lng), stopover: true });
+        }
+    }
+    directionsService.route({
+        origin: origin, destination: destination, waypoints: waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+    }, function(result, status) {
+        if (status === 'OK') {
+            directionsRenderer.setDirections(result);
+            var totalDist = 0, totalTime = 0;
+            result.routes[0].legs.forEach(function(leg) {
+                totalDist += leg.distance.value;
+                totalTime += leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value;
+            });
+            var miles = (totalDist / 1609.34).toFixed(1);
+            var mins = Math.round(totalTime / 60);
+            var hrs = Math.floor(mins / 60); var m = mins % 60;
+            var timeStr = hrs > 0 ? hrs + 'h ' + m + 'm' : m + ' min';
+            document.getElementById('route-info').textContent = routeStops.length + ' stops | ' + miles + ' mi | ' + timeStr + ' (traffic)';
+        }
+    });
+}
+
+function optimizeRoute() {
+    if (routeStops.length < 3) return;
+    var startInput = document.getElementById('start-location').value;
+    var endInput = document.getElementById('end-location').value;
+    var origin, destination, waypoints = [];
+    if (startInput) {
+        origin = startInput;
+        routeStops.forEach(function(s) { waypoints.push({ location: new google.maps.LatLng(s.lat, s.lng), stopover: true }); });
+        destination = endInput || startInput;
+    } else {
+        origin = new google.maps.LatLng(routeStops[0].lat, routeStops[0].lng);
+        destination = new google.maps.LatLng(routeStops[routeStops.length - 1].lat, routeStops[routeStops.length - 1].lng);
+        for (var i = 1; i < routeStops.length - 1; i++) {
+            waypoints.push({ location: new google.maps.LatLng(routeStops[i].lat, routeStops[i].lng), stopover: true });
+        }
+    }
+    directionsService.route({
+        origin: origin, destination: destination, waypoints: waypoints,
+        optimizeWaypoints: true,
+        travelMode: google.maps.TravelMode.DRIVING,
+        drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+    }, function(result, status) {
+        if (status === 'OK') {
+            directionsRenderer.setDirections(result);
+            var order = result.routes[0].waypoint_order;
+            if (!startInput) {
+                var middle = routeStops.slice(1, -1);
+                var reordered = [routeStops[0]];
+                order.forEach(function(idx) { reordered.push(middle[idx]); });
+                reordered.push(routeStops[routeStops.length - 1]);
+                routeStops = reordered;
+            } else {
+                var reordered = [];
+                order.forEach(function(idx) { reordered.push(routeStops[idx]); });
+                routeStops = reordered;
+            }
+            updateRoutePanel();
+            var totalDist = 0, totalTime = 0;
+            result.routes[0].legs.forEach(function(leg) {
+                totalDist += leg.distance.value;
+                totalTime += leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value;
+            });
+            var miles = (totalDist / 1609.34).toFixed(1);
+            var mins = Math.round(totalTime / 60);
+            var hrs = Math.floor(mins / 60); var m = mins % 60;
+            var timeStr = hrs > 0 ? hrs + 'h ' + m + 'm' : m + ' min';
+            document.getElementById('route-info').textContent = routeStops.length + ' stops | ' + miles + ' mi | ' + timeStr + ' (optimized)';
+        }
+    });
+}
+
+function clearRoute() {
+    routeStops = [];
+    updateRoutePanel();
+    directionsRenderer.setDirections({ routes: [] });
+    document.getElementById('route-info').textContent = '0 stops | 0 mi | 0 min';
+    infoWindows.forEach(function(iw) { iw.close(); });
+}
+
+function launchNavigation() {
+    if (routeStops.length < 2) return;
+    var startInput = document.getElementById('start-location').value;
+    var endInput = document.getElementById('end-location').value;
+    var origin, destination, waypointStr;
+    if (startInput) {
+        origin = encodeURIComponent(startInput);
+        destination = endInput ? encodeURIComponent(endInput) : origin;
+        waypointStr = routeStops.map(function(s) { return s.lat + ',' + s.lng; }).join('|');
+    } else {
+        origin = routeStops[0].lat + ',' + routeStops[0].lng;
+        destination = routeStops[routeStops.length - 1].lat + ',' + routeStops[routeStops.length - 1].lng;
+        if (routeStops.length > 2) {
+            waypointStr = routeStops.slice(1, -1).map(function(s) { return s.lat + ',' + s.lng; }).join('|');
+        }
+    }
+    var url = 'https://www.google.com/maps/dir/?api=1&origin=' + origin + '&destination=' + destination;
+    if (waypointStr) url += '&waypoints=' + waypointStr;
+    url += '&travelmode=driving';
+    window.open(url, '_blank');
+}
+
+function navigateTo(lat, lng) {
+    window.open('https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '&travelmode=driving', '_blank');
+}
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD8yS7jUYJ76TZFuo8LbrV4QGLojLRX9bI&libraries=places&callback=initMap" async defer></script>
+
+</body>
+</html>
