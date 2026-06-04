@@ -54,7 +54,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f5f3ef; }
 .btn-optimize:hover { background: #247548; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(245,243,239,0.9); display: flex; align-items: center; justify-content: center; z-index: 20; font-size: 14px; color: #1B3A5C; font-weight: 600; }
+.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(245,243,239,0.9); display: flex; align-items: center; justify-content: center; z-index: 20; font-size: 14px; color: #1B3A5C; font-weight: 600; text-align: center; padding: 20px; line-height: 1.5; }
 
 .info-window { font-family: 'DM Sans', sans-serif; max-width: 280px; }
 .info-window .iw-id { font-size: 10px; color: #C9A96E; font-weight: 600; }
@@ -142,6 +142,24 @@ var SHEET_ID = '1jCi-rpfjYwHMI-s8t4bK-1UUJ5KARd7NPIV4nFsrPoM';
 var SHEET_NAME = 'Practices';
 var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
 
+// ---- ROW OWNERSHIP -------------------------------------------------------
+// The logged-in rep's email is passed in from Glide as ?rep=their@email.com
+// A rep sees a practice only if their email matches Owner_Rep_Email OR
+// Owner_Admin_Email (same OR-logic as the Glide row owner setup).
+// ADMIN_EMAIL is a hardcoded safety net: the admin sees every row even if a
+// row's Owner_Admin_Email cell is ever left blank. Default with no rep = nothing.
+var ADMIN_EMAIL = 'kevin@solutionsfor3am.com';
+var repEmail = (new URLSearchParams(window.location.search).get('rep') || '').trim().toLowerCase();
+
+function repCanSee(ownerRep, ownerAdmin) {
+    if (!repEmail) return false;                 // no rep identified = zero access
+    if (repEmail === ADMIN_EMAIL) return true;   // admin sees everything
+    var rep = (ownerRep || '').trim().toLowerCase();
+    var admin = (ownerAdmin || '').trim().toLowerCase();
+    return repEmail === rep || repEmail === admin;
+}
+// --------------------------------------------------------------------------
+
 var allPractices = [];
 var visiblePractices = [];
 var routeStops = [];
@@ -193,6 +211,14 @@ function parseCSV(text) {
 }
 
 function loadSheetData() {
+    // Guard: if Glide never passed a rep email, stop before touching data.
+    if (!repEmail) {
+        document.getElementById('loading').innerHTML =
+            'No rep identified.<br>This map must be opened from inside the app so it knows who you are.';
+        document.getElementById('market-label').textContent = 'No rep';
+        return;
+    }
+
     fetch(SHEET_URL)
         .then(function(response) { return response.text(); })
         .then(function(text) {
@@ -212,6 +238,7 @@ function loadSheetData() {
             console.log('Column map:', JSON.stringify(colMap));
 
             var markets = new Set();
+            var skipped = 0;
 
             for (var r = 1; r < rows.length; r++) {
                 var row = rows[r];
@@ -219,6 +246,12 @@ function loadSheetData() {
 
                 var practiceId = row[colMap['Practice_ID']] || '';
                 if (!practiceId) continue;
+
+                // ---- OWNERSHIP GATE: skip any row this rep is not allowed to see ----
+                var ownerRep = row[colMap['Owner_Rep_Email']] || '';
+                var ownerAdmin = row[colMap['Owner_Admin_Email']] || '';
+                if (!repCanSee(ownerRep, ownerAdmin)) { skipped++; continue; }
+                // ---------------------------------------------------------------------
 
                 var score = parseInt(row[colMap['Opportunity_Score']]) || 0;
                 var leadTemp = (row[colMap['Lead_Temperature']] || '').toLowerCase();
@@ -258,8 +291,16 @@ function loadSheetData() {
                 allPractices.push(practice);
             }
 
-            console.log('Loaded ' + allPractices.length + ' practices');
+            console.log('Rep ' + repEmail + ' can see ' + allPractices.length + ' practices (' + skipped + ' hidden)');
             console.log('Markets found:', Array.from(markets));
+
+            // If the rep owns nothing yet, say so clearly instead of a blank map.
+            if (allPractices.length === 0) {
+                document.getElementById('loading').innerHTML =
+                    'No practices assigned to your account yet.<br>Contact your admin to get a territory.';
+                document.getElementById('market-label').textContent = repEmail;
+                return;
+            }
 
             // Populate market dropdown
             var select = document.getElementById('market-select');
@@ -282,8 +323,7 @@ function loadSheetData() {
                 }
             }
 
-            document.getElementById('market-label').textContent =
-                currentMarket === 'all' ? 'All Markets' : currentMarket;
+            updateMarketLabel();
 
             filterPracticesByMarket();
             geocodeAndDisplay();
@@ -292,6 +332,11 @@ function loadSheetData() {
             console.error('Error loading sheet:', err);
             document.getElementById('loading').textContent = 'Error loading data. Make sure sheet is shared publicly.';
         });
+}
+
+function updateMarketLabel() {
+    var marketText = currentMarket === 'all' ? 'All Markets' : currentMarket;
+    document.getElementById('market-label').textContent = marketText;
 }
 
 function filterPracticesByMarket() {
@@ -306,8 +351,7 @@ function filterPracticesByMarket() {
 
 function changeMarket() {
     currentMarket = document.getElementById('market-select').value;
-    document.getElementById('market-label').textContent =
-        currentMarket === 'all' ? 'All Markets' : currentMarket;
+    updateMarketLabel();
 
     // Clear existing markers and route
     clearRoute();
